@@ -1,1 +1,66 @@
-# Skillscroll
+# SkillScroll
+
+Mobile-first micro-learning app that turns the social-media scroll habit into skill-building. Same vertical swipe mechanics as Reels/TikTok, but every unit of content is a 30–60 second lesson followed by a micro-quiz and a reward trigger.
+
+Built from `SkillScroll PRD v1.0` (MVP build specification). Stack: **React Native (Expo SDK 57) · Supabase · TypeScript**.
+
+## Repository layout
+
+```
+app/                      Expo (React Native) mobile app
+  src/
+    components/           LessonCard, QuizBottomSheet, StreakCounter, DailyGoalBar,
+                          XPBadge, ConfettiCelebration, LevelUpModal, NotInterestedSheet…
+    screens/              FeedScreen, OnboardingFlow, ProgressScreen, ProfileScreen
+    stores/               Zustand stores: user, progress (XP/streak/goal), feed
+    data/                 Bundled seed lessons + data layer (Supabase w/ local fallback)
+    lib/                  supabase client, levels/XP math, date helpers, analytics facade
+    services/             notifications (streak reminder, comeback nudge)
+    navigation/           3-tab navigator (Feed · Progress · Profile)
+supabase/
+  migrations/             001_users … 008_push_tokens (schema + RLS, PRD 14.3)
+  seed/                   seed_lessons.sql (generated from app seed data)
+  functions/              Edge functions: complete-lesson, submit-quiz, feed,
+                          streak-reset, send-reminder (PRD 14.2)
+scripts/                  generate-seed.mjs (TS lesson data → SQL seed)
+tests/                    Pure-logic tests (XP, levels, streak date math)
+```
+
+## Running the app
+
+```bash
+cd app
+npm install
+npm start          # Expo dev server → scan QR with Expo Go, or press i / a
+```
+
+The app runs fully offline in **local demo mode** out of the box: 24 bundled lessons across Finance, Technology, Communication, and Productivity, with all progress persisted on-device (AsyncStorage). No backend needed.
+
+### Connecting Supabase (optional)
+
+1. Create a Supabase project and run the migrations in `supabase/migrations/` in order, then `supabase/seed/seed_lessons.sql`.
+2. Deploy edge functions: `supabase functions deploy complete-lesson submit-quiz feed streak-reset send-reminder`.
+3. Schedule `streak-reset` and `send-reminder` hourly (Supabase cron), so every timezone is processed at its own midnight / 9pm.
+4. Copy `app/.env.example` to `app/.env` and fill in your project URL + anon key.
+
+## Checks
+
+```bash
+npm test                  # pure-logic tests (XP, levels, streak date math)
+npm run typecheck         # strict TypeScript over the app
+npm run seed:generate     # regenerate SQL seed after editing lesson content
+```
+
+## What's implemented (MVP scope, PRD §6.1)
+
+- **Feed**: full-screen vertical paging feed with snap, position preservation, pre-fetching of upcoming lessons, and swipe-left "Not interested" (3 reason chips) that trains the feed.
+- **Lessons**: mandatory Hook → Concept → Example → Takeaway structure with story-style segmented progress bar; text-card lessons bundled, video lessons supported via `expo-video` (autoplay, sound off by default, tap toggles sound); "Try this today" actionable prompt on every lesson.
+- **Quiz**: bottom sheet slides up on lesson end (spring, 55% height); 4-option MCQ; selected → 150ms → green/red reveal with the correct answer always shown; feed swiping is disabled until answered; "Next Lesson" CTA after 1s.
+- **Gamification**: +10 XP per lesson, +5 per correct quiz, 1.5× streak bonus from day 7; levels Beginner → Explorer → Learner → Scholar → Master; streak increments the moment the daily goal is reached; midnight reset with a weekly earned streak freeze; full-screen confetti (180 particles, ≤2.5s, success haptic) on goal completion; level-up modal.
+- **Onboarding**: 3 screens (topic pills → daily goal as scrolls → Google/Apple/skip), no email or password; anonymous sessions persist on device.
+- **Notifications**: permission requested only after the first completed lesson; 9pm streak reminder with the actual streak number; 48h comeback nudge (armed locally, pushed back on every open); no notification on days the goal is already met.
+- **Backend**: full Postgres schema with RLS, idempotent server-side XP/streak/goal accounting in edge functions, rule-based feed ranking (topics → unseen → quality score), Expo push delivery for reminders.
+
+## Deferred (per PRD)
+
+Monetization, search, bookmarks, leaderboards, sharing, offline video caching, Hindi content (schema supports `language='hi'`; content pending), Sentry/PostHog wiring (analytics facade is in place at `app/src/lib/analytics.ts`).
