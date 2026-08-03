@@ -1,11 +1,16 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DailyGoalBar from '../components/DailyGoalBar';
+import LessonDetailModal from '../components/LessonDetailModal';
+import { searchLessons } from '../data/api';
+import { capture } from '../lib/analytics';
 import { getLevel } from '../lib/levels';
+import { useBookmarkStore } from '../stores/bookmarkStore';
 import { useProgressStore } from '../stores/progressStore';
 import { goalLessonCount, useUserStore } from '../stores/userStore';
-import { colors, radii, spacing } from '../theme';
+import { categoryColors, categoryLabels, colors, radii, spacing } from '../theme';
+import type { Lesson } from '../types';
 
 const REASON_LABELS: Record<string, string> = {
   lesson_complete: 'Lesson completed',
@@ -25,6 +30,28 @@ export default function ProgressScreen() {
   const xpTransactions = useProgressStore((s) => s.xpTransactions);
   const completedLessons = useProgressStore((s) => s.completedLessons);
   const dailyGoalMinutes = useUserStore((s) => s.dailyGoalMinutes);
+  const language = useUserStore((s) => s.language);
+  const bookmarks = useBookmarkStore((s) => s.bookmarks);
+
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Lesson[]>([]);
+  const [openLesson, setOpenLesson] = useState<Lesson | null>(null);
+
+  // Debounced lesson search (PRD 6.2, Phase 2)
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      void searchLessons(trimmed, language).then((found) => {
+        setResults(found);
+        capture('lesson_searched', { query: trimmed, results: found.length });
+      });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query, language]);
 
   const level = getLevel(totalXp);
   const goalLessons = goalLessonCount(dailyGoalMinutes);
@@ -89,6 +116,50 @@ export default function ProgressScreen() {
         )}
       </View>
 
+      <Text style={styles.sectionTitle}>Library</Text>
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search lessons…"
+        placeholderTextColor={colors.textMuted}
+        value={query}
+        onChangeText={setQuery}
+        returnKeyType="search"
+      />
+      {results.map((lesson) => (
+        <Pressable key={lesson.id} style={styles.lessonRow} onPress={() => setOpenLesson(lesson)}>
+          <View style={[styles.lessonDot, { backgroundColor: categoryColors[lesson.category] }]} />
+          <View style={styles.lessonRowBody}>
+            <Text style={styles.lessonRowTitle} numberOfLines={1}>
+              {lesson.title}
+            </Text>
+            <Text style={styles.lessonRowMeta}>{categoryLabels[lesson.category]}</Text>
+          </View>
+          {completedLessons[lesson.id] && <Text style={styles.lessonRowDone}>✓</Text>}
+        </Pressable>
+      ))}
+      {query.trim().length >= 2 && results.length === 0 && (
+        <Text style={styles.empty}>No lessons match “{query.trim()}”.</Text>
+      )}
+
+      <Text style={styles.sectionTitle}>Saved lessons</Text>
+      {Object.keys(bookmarks).length === 0 && (
+        <Text style={styles.empty}>Tap 📑 on any lesson to save it for later.</Text>
+      )}
+      {Object.values(bookmarks).map((lesson) => (
+        <Pressable key={lesson.id} style={styles.lessonRow} onPress={() => setOpenLesson(lesson)}>
+          <View style={[styles.lessonDot, { backgroundColor: categoryColors[lesson.category] }]} />
+          <View style={styles.lessonRowBody}>
+            <Text style={styles.lessonRowTitle} numberOfLines={1}>
+              {lesson.title}
+            </Text>
+            <Text style={styles.lessonRowMeta}>{categoryLabels[lesson.category]}</Text>
+          </View>
+          {completedLessons[lesson.id] && <Text style={styles.lessonRowDone}>✓</Text>}
+        </Pressable>
+      ))}
+
+      <LessonDetailModal lesson={openLesson} onClose={() => setOpenLesson(null)} />
+
       <Text style={styles.sectionTitle}>Recent XP</Text>
       {xpTransactions.length === 0 && (
         <Text style={styles.empty}>Complete your first lesson to start earning XP.</Text>
@@ -151,6 +222,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   empty: { color: colors.textMuted, fontSize: 13 },
+  searchInput: {
+    height: 44,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    color: colors.text,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  lessonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  lessonDot: { width: 8, height: 8, borderRadius: 4 },
+  lessonRowBody: { flex: 1 },
+  lessonRowTitle: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  lessonRowMeta: { color: colors.textMuted, fontSize: 11, marginTop: 1 },
+  lessonRowDone: { color: colors.success, fontSize: 14, fontWeight: '700' },
   txRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

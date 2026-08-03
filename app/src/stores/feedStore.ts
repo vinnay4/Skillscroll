@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { capture } from '../lib/analytics';
 import { fetchFeed, syncNotInterested } from '../data/api';
-import type { Category, Lesson, NotInterestedReason } from '../types';
+import type { Category, Language, Lesson, NotInterestedReason } from '../types';
 
 interface FeedState {
   lessons: Lesson[];
@@ -13,9 +13,9 @@ interface FeedState {
   seenIds: string[];
   hiddenIds: string[];
 
-  loadFeed: (topics: Category[]) => Promise<void>;
+  loadFeed: (topics: Category[], language: Language) => Promise<void>;
   /** Appends the next page when the user nears the end of the loaded queue (pre-fetch, REQ-002). */
-  extendFeed: (topics: Category[]) => Promise<void>;
+  extendFeed: (topics: Category[], language: Language) => Promise<void>;
   setCurrentIndex: (index: number) => void;
   markSeen: (lessonId: string) => void;
   markNotInterested: (lessonId: string, reason: NotInterestedReason) => void;
@@ -30,11 +30,12 @@ export const useFeedStore = create<FeedState>()(
       seenIds: [],
       hiddenIds: [],
 
-      loadFeed: async (topics) => {
+      loadFeed: async (topics, language) => {
         set({ loading: true });
         const { seenIds, hiddenIds } = get();
         const lessons = await fetchFeed({
           topics,
+          language,
           seenIds: new Set(seenIds),
           hiddenIds: new Set(hiddenIds),
           limit: 10,
@@ -42,11 +43,12 @@ export const useFeedStore = create<FeedState>()(
         set({ lessons, loading: false, currentIndex: 0 });
       },
 
-      extendFeed: async (topics) => {
+      extendFeed: async (topics, language) => {
         const { lessons, seenIds, hiddenIds } = get();
         const loadedIds = new Set(lessons.map((l) => l.id));
         const next = await fetchFeed({
           topics,
+          language,
           seenIds: new Set([...seenIds, ...loadedIds]),
           hiddenIds: new Set(hiddenIds),
           limit: 10,

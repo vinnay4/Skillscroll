@@ -28,7 +28,11 @@ interface Props {
   quizVisible: boolean;
   completed: boolean;
   soundOn: boolean;
+  bookmarked: boolean;
   onToggleSound: () => void;
+  onToggleBookmark: () => void;
+  onShare: () => void;
+  onReport: () => void;
   onLessonEnd: () => void;
   onSwipeLeft: () => void;
 }
@@ -64,7 +68,11 @@ export default function LessonCard({
   quizVisible,
   completed,
   soundOn,
+  bookmarked,
   onToggleSound,
+  onToggleBookmark,
+  onShare,
+  onReport,
   onLessonEnd,
   onSwipeLeft,
 }: Props) {
@@ -188,7 +196,13 @@ export default function LessonCard({
         {/* Dim media to 30% while the quiz sheet is up (PRD 8.3) */}
         {quizVisible && <View style={styles.quizDim} pointerEvents="none" />}
 
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleTap}>
+        {/* Long-press opens the issue-report sheet (REQ-022) */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={handleTap}
+          onLongPress={onReport}
+          delayLongPress={2000}
+        >
           {!isVideo && !quizVisible && (
             <View style={styles.textContent} pointerEvents="none">
               <Text style={[styles.segmentLabel, { color: categoryColor }]}>
@@ -241,11 +255,19 @@ export default function LessonCard({
           <Text style={styles.title} numberOfLines={2}>
             {lesson.title}
           </Text>
-          {isVideo && (
-            <Pressable style={styles.soundButton} onPress={onToggleSound} hitSlop={12}>
-              <Text style={styles.soundIcon}>{soundOn ? '🔊' : '🔇'}</Text>
+          <View style={styles.actionRail}>
+            <Pressable style={styles.actionButton} onPress={onToggleBookmark} hitSlop={8}>
+              <Text style={styles.actionIcon}>{bookmarked ? '🔖' : '📑'}</Text>
             </Pressable>
-          )}
+            <Pressable style={styles.actionButton} onPress={onShare} hitSlop={8}>
+              <Text style={styles.actionIcon}>↗</Text>
+            </Pressable>
+            {isVideo && (
+              <Pressable style={styles.actionButton} onPress={onToggleSound} hitSlop={8}>
+                <Text style={styles.actionIcon}>{soundOn ? '🔊' : '🔇'}</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       </View>
     </GestureDetector>
@@ -376,7 +398,8 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginRight: spacing.md,
   },
-  soundButton: {
+  actionRail: { gap: 10, alignItems: 'center' },
+  actionButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -384,5 +407,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  soundIcon: { fontSize: 18 },
+  actionIcon: { fontSize: 18, color: colors.white },
 });

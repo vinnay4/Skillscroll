@@ -1,9 +1,10 @@
-import type { Category, Lesson } from '../types';
+import type { Category, Language, Lesson } from '../types';
 import { supabase } from '../lib/supabase';
 import { SEED_LESSONS } from './lessons';
 
 interface FeedParams {
   topics: Category[];
+  language: Language;
   seenIds: Set<string>;
   hiddenIds: Set<string>;
   limit?: number;
@@ -16,8 +17,11 @@ interface FeedParams {
  *  3. sorted by quality_score descending
  * Seen lessons are appended at the end so the feed never runs dry in demo mode.
  */
-function rankLessons(all: Lesson[], { topics, seenIds, hiddenIds, limit = 10 }: FeedParams): Lesson[] {
-  const visible = all.filter((l) => !hiddenIds.has(l.id));
+function rankLessons(
+  all: Lesson[],
+  { topics, language, seenIds, hiddenIds, limit = 10 }: FeedParams
+): Lesson[] {
+  const visible = all.filter((l) => !hiddenIds.has(l.id) && l.language === language);
   const topicSet = new Set(topics);
 
   const score = (l: Lesson): number => {
@@ -57,6 +61,7 @@ export async function fetchFeed(params: FeedParams): Promise<Lesson[]> {
       const { data, error } = await supabase
         .from('lessons')
         .select('*')
+        .eq('language', params.language)
         .order('quality_score', { ascending: false })
         .limit(200);
       if (!error && data && data.length > 0) {
@@ -67,6 +72,33 @@ export async function fetchFeed(params: FeedParams): Promise<Lesson[]> {
     }
   }
   return rankLessons(SEED_LESSONS, params);
+}
+
+/** Lesson search over title and structure text (PRD 6.2, Phase 2). */
+export async function searchLessons(query: string, language: Language): Promise<Lesson[]> {
+  const q = query.trim().toLowerCase();
+  if (q.length < 2) return [];
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('lessons')
+        .select('*')
+        .eq('language', language)
+        .or(`title.ilike.%${q}%,structure_concept.ilike.%${q}%,structure_hook.ilike.%${q}%`)
+        .order('quality_score', { ascending: false })
+        .limit(20);
+      if (!error && data) return data.map(mapRow);
+    } catch {
+      // fall through to bundled seed content
+    }
+  }
+  return SEED_LESSONS.filter(
+    (l) =>
+      l.language === language &&
+      (l.title.toLowerCase().includes(q) ||
+        l.structureConcept.toLowerCase().includes(q) ||
+        l.structureHook.toLowerCase().includes(q))
+  ).slice(0, 20);
 }
 
 /** Fire-and-forget server sync of a completed lesson (local store is source of truth offline). */
@@ -91,6 +123,62 @@ export async function syncLessonCompletion(entry: {
     });
   } catch {
     // offline-first: local persistence already recorded the completion
+  }
+}
+
+export interface RemoteProgress {
+  totalXp: number;
+  currentStreak: number;
+  longestStreak: number;
+  completed: {
+    lessonId: string;
+    completedAt: string;
+    quizAnswered: boolean;
+    quizCorrect: boolean;
+    watchPercentage: number;
+  }[];
+}
+
+/**
+ * Pulls server-side progress for signed-in users so XP/streak/completions sync
+ * across devices on app open (REQ-019). Returns null when signed out/offline.
+ */
+export async function fetchRemoteProgress(): Promise<RemoteProgress | null> {
+  if (!supabase) return null;
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    const authId = authData.user?.id;
+    if (!authId) return null;
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, total_xp')
+      .eq('auth_id', authId)
+      .single();
+    if (!user) return null;
+
+    const [{ data: streak }, { data: progress }] = await Promise.all([
+      supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
+      supabase
+        .from('user_lesson_progress')
+        .select('lesson_id, completed_at, quiz_answered, quiz_correct, watch_percentage')
+        .eq('user_id', user.id),
+    ]);
+
+    return {
+      totalXp: user.total_xp ?? 0,
+      currentStreak: streak?.current_streak ?? 0,
+      longestStreak: streak?.longest_streak ?? 0,
+      completed: (progress ?? []).map((row) => ({
+        lessonId: row.lesson_id,
+        completedAt: row.completed_at,
+        quizAnswered: row.quiz_answered,
+        quizCorrect: row.quiz_correct,
+        watchPercentage: Number(row.watch_percentage),
+      })),
+    };
+  } catch {
+    return null;
   }
 }
 

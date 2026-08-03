@@ -34,7 +34,7 @@ npm install
 npm start          # Expo dev server → scan QR with Expo Go, or press i / a
 ```
 
-The app runs fully offline in **local demo mode** out of the box: 24 bundled lessons across Finance, Technology, Communication, and Productivity, with all progress persisted on-device (AsyncStorage). No backend needed.
+The app runs fully offline in **local demo mode** out of the box: 32 bundled lessons (24 English + 8 Hindi) across Finance, Technology, Communication, and Productivity, with all progress persisted on-device (AsyncStorage). No backend needed.
 
 ### Connecting Supabase (optional)
 
@@ -59,8 +59,16 @@ npm run seed:generate     # regenerate SQL seed after editing lesson content
 - **Gamification**: +10 XP per lesson, +5 per correct quiz, 1.5× streak bonus from day 7; levels Beginner → Explorer → Learner → Scholar → Master; streak increments the moment the daily goal is reached; midnight reset with a weekly earned streak freeze; full-screen confetti (180 particles, ≤2.5s, success haptic) on goal completion; level-up modal.
 - **Onboarding**: 3 screens (topic pills → daily goal as scrolls → Google/Apple/skip), no email or password; anonymous sessions persist on device.
 - **Notifications**: permission requested only after the first completed lesson; 9pm streak reminder with the actual streak number; 48h comeback nudge (armed locally, pushed back on every open); no notification on days the goal is already met.
-- **Backend**: full Postgres schema with RLS, idempotent server-side XP/streak/goal accounting in edge functions, rule-based feed ranking (topics → unseen → quality score), Expo push delivery for reminders.
+- **Backend**: full Postgres schema with RLS, idempotent server-side XP/streak/goal accounting in edge functions, rule-based feed ranking (topics → unseen → quality score), Expo push delivery for reminders, push-token registration, and cross-device progress sync on app open for signed-in users.
+- **Hindi content** (REQ-015): feed, search, and seed content are language-aware; switch English ↔ हिन्दी from the Profile tab.
+- **Issue reporting** (REQ-022): long-press any lesson for 2 seconds to open a report sheet (category chips + free text).
+
+## Phase 2 features included
+
+- **Bookmarking**: save any lesson from the feed action rail; saved list lives in the Progress tab and syncs to Supabase when signed in.
+- **Lesson search**: search by title/concept in the Progress tab's Library section; results open a read-only lesson view.
+- **Share lesson card**: native share sheet with the lesson takeaway (WhatsApp/Instagram etc.).
 
 ## Deferred (per PRD)
 
-Monetization, search, bookmarks, leaderboards, sharing, offline video caching, Hindi content (schema supports `language='hi'`; content pending), Sentry/PostHog wiring (analytics facade is in place at `app/src/lib/analytics.ts`).
+Monetization, friends leaderboard (needs social graph), topic deep-dive series, offline video caching, report screenshots (needs `react-native-view-shot`), Sentry/PostHog wiring (analytics facade is in place at `app/src/lib/analytics.ts`).

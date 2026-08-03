@@ -2,6 +2,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { capture } from '../lib/analytics';
+import { supabase } from '../lib/supabase';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -33,7 +34,27 @@ export async function requestPermissionAfterFirstLesson(): Promise<boolean> {
   }
   const granted = status === 'granted';
   capture('notification_permission_result', { granted });
+  if (granted) void registerPushToken();
   return granted;
+}
+
+/**
+ * Stores the device's Expo push token on the user's profile so the
+ * server-side send-reminder / comeback-nudge functions can reach it.
+ * No-op for anonymous or offline users (local scheduling still covers them).
+ */
+export async function registerPushToken(): Promise<void> {
+  if (!Device.isDevice || !supabase) return;
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    const authId = authData.user?.id;
+    if (!authId) return;
+    const token = (await Notifications.getExpoPushTokenAsync()).data;
+    if (!token) return;
+    await supabase.from('users').update({ push_token: token }).eq('auth_id', authId);
+  } catch {
+    // Expo Go doesn't support remote push; local notifications still work
+  }
 }
 
 /**

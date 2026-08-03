@@ -12,7 +12,11 @@ export type AnalyticsEvent =
   | 'daily_goal_met'
   | 'level_up'
   | 'lesson_not_interested'
-  | 'notification_permission_result';
+  | 'notification_permission_result'
+  | 'lesson_bookmarked'
+  | 'lesson_shared'
+  | 'lesson_reported'
+  | 'lesson_searched';
 
 export function capture(event: AnalyticsEvent, props?: Record<string, unknown>): void {
   if (__DEV__) {

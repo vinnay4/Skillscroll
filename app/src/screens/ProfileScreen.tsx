@@ -22,6 +22,7 @@ export default function ProfileScreen() {
   const topics = useUserStore((s) => s.topics);
   const dailyGoalMinutes = useUserStore((s) => s.dailyGoalMinutes);
   const language = useUserStore((s) => s.language);
+  const setLanguage = useUserStore((s) => s.setLanguage);
   const resetUser = useUserStore((s) => s.resetAll);
 
   const totalXp = useProgressStore((s) => s.totalXp);
@@ -93,10 +94,13 @@ export default function ProfileScreen() {
         <Text style={styles.settingLabel}>Daily goal</Text>
         <Text style={styles.settingValue}>{dailyGoalMinutes} min</Text>
       </View>
-      <View style={styles.settingRow}>
-        <Text style={styles.settingLabel}>Language</Text>
+      <Pressable
+        style={styles.settingRow}
+        onPress={() => setLanguage(language === 'en' ? 'hi' : 'en')}
+      >
+        <Text style={styles.settingLabel}>Language (tap to switch)</Text>
         <Text style={styles.settingValue}>{language === 'en' ? 'English' : 'हिन्दी'}</Text>
-      </View>
+      </Pressable>
 
       <Pressable style={styles.resetButton} onPress={handleReset}>
         <Text style={styles.resetText}>Reset all progress</Text>

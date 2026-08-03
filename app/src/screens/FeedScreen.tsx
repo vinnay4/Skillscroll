@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ConfettiCelebration from '../components/ConfettiCelebration';
 import DailyGoalBar from '../components/DailyGoalBar';
+import FeedbackSheet from '../components/FeedbackSheet';
 import FirstSwipeOverlay from '../components/FirstSwipeOverlay';
 import LessonCard from '../components/LessonCard';
 import LevelUpModal from '../components/LevelUpModal';
@@ -23,6 +24,8 @@ import {
   requestPermissionAfterFirstLesson,
   scheduleStreakReminder,
 } from '../services/notifications';
+import { shareLesson } from '../lib/share';
+import { useBookmarkStore } from '../stores/bookmarkStore';
 import { useFeedStore } from '../stores/feedStore';
 import { CompletionResult, useProgressStore } from '../stores/progressStore';
 import { goalLessonCount, useUserStore } from '../stores/userStore';
@@ -36,6 +39,7 @@ export default function FeedScreen() {
   const listRef = useRef<FlatList<Lesson>>(null);
 
   const topics = useUserStore((s) => s.topics);
+  const language = useUserStore((s) => s.language);
   const dailyGoalMinutes = useUserStore((s) => s.dailyGoalMinutes);
   const soundOn = useUserStore((s) => s.soundOn);
   const toggleSound = useUserStore((s) => s.toggleSound);
@@ -59,8 +63,12 @@ export default function FeedScreen() {
   const completeLesson = useProgressStore((s) => s.completeLesson);
   const completedLessons = useProgressStore((s) => s.completedLessons);
 
+  const bookmarks = useBookmarkStore((s) => s.bookmarks);
+  const toggleBookmark = useBookmarkStore((s) => s.toggleBookmark);
+
   const [quizVisible, setQuizVisible] = useState(false);
   const [notInterestedVisible, setNotInterestedVisible] = useState(false);
+  const [reportingLesson, setReportingLesson] = useState<Lesson | null>(null);
   const [celebrating, setCelebrating] = useState(false);
   const [levelUpName, setLevelUpName] = useState<string | null>(null);
   const [xpFloat, setXpFloat] = useState<{ amount: number; key: number } | null>(null);
@@ -68,15 +76,16 @@ export default function FeedScreen() {
   const goalLessons = goalLessonCount(dailyGoalMinutes);
   const activeLesson: Lesson | undefined = lessons[currentIndex];
 
+  // Load on first open; reload when the content language changes (REQ-015)
   useEffect(() => {
-    if (lessons.length === 0) void loadFeed(topics);
+    void loadFeed(topics, language);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [language]);
 
   // Pre-fetch the next page before the user reaches the end (REQ-002)
   useEffect(() => {
     if (lessons.length > 0 && currentIndex >= lessons.length - 4) {
-      void extendFeed(topics);
+      void extendFeed(topics, language);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, lessons.length]);
@@ -148,12 +157,16 @@ export default function FeedScreen() {
         quizVisible={quizVisible && index === currentIndex}
         completed={!!completedLessons[item.id]}
         soundOn={soundOn}
+        bookmarked={!!bookmarks[item.id]}
         onToggleSound={toggleSound}
+        onToggleBookmark={() => toggleBookmark(item)}
+        onShare={() => void shareLesson(item)}
+        onReport={() => setReportingLesson(item)}
         onLessonEnd={handleLessonEnd}
         onSwipeLeft={() => setNotInterestedVisible(true)}
       />
     ),
-    [currentIndex, quizVisible, completedLessons, soundOn, toggleSound, handleLessonEnd]
+    [currentIndex, quizVisible, completedLessons, soundOn, bookmarks, toggleSound, toggleBookmark, handleLessonEnd]
   );
 
   const keyExtractor = useCallback((item: Lesson) => item.id, []);
@@ -236,6 +249,8 @@ export default function FeedScreen() {
         onSelect={handleNotInterested}
         onDismiss={() => setNotInterestedVisible(false)}
       />
+
+      <FeedbackSheet lesson={reportingLesson} onClose={() => setReportingLesson(null)} />
 
       <ConfettiCelebration visible={celebrating} onFinish={() => setCelebrating(false)} />
 

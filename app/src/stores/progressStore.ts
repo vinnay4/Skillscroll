@@ -41,6 +41,13 @@ interface ProgressState {
 
   /** Handles midnight rollover, weekly freeze grant, and streak reset (REQ-009). Call on app open/foreground. */
   rolloverIfNeeded: () => void;
+  /** Merges server-side progress into the local store on sign-in (REQ-019). Takes maxima so no device loses progress. */
+  mergeRemote: (remote: {
+    totalXp: number;
+    currentStreak: number;
+    longestStreak: number;
+    completed: LessonProgress[];
+  }) => void;
   /** Records a completed lesson + quiz answer; awards XP; drives streak & goal (REQ-007, REQ-013). */
   completeLesson: (lesson: Lesson, quizSelectedIndex: number, goalLessons: number) => CompletionResult;
   resetAll: () => void;
@@ -110,6 +117,22 @@ export const useProgressStore = create<ProgressState>()(
         }
 
         if (Object.keys(updates).length > 0) set(updates);
+      },
+
+      mergeRemote: (remote) => {
+        const state = get();
+        const completedLessons = { ...state.completedLessons };
+        for (const entry of remote.completed) {
+          if (!completedLessons[entry.lessonId]) {
+            completedLessons[entry.lessonId] = entry;
+          }
+        }
+        set({
+          totalXp: Math.max(state.totalXp, remote.totalXp),
+          currentStreak: Math.max(state.currentStreak, remote.currentStreak),
+          longestStreak: Math.max(state.longestStreak, remote.longestStreak),
+          completedLessons,
+        });
       },
 
       completeLesson: (lesson, quizSelectedIndex, goalLessons) => {
