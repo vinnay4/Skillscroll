@@ -40,6 +40,16 @@ export interface XpTransaction {
 
 export type NotInterestedReason = 'already_know' | 'wrong_topic' | 'too_basic';
 
+/** Topic deep-dive: an ordered series of 5–10 lessons on one sub-topic (PRD 6.2, Phase 2) */
+export interface Series {
+  id: string;
+  title: string;
+  description: string;
+  category: Category;
+  language: Language;
+  lessonIds: string[];
+}
+
 export interface LevelInfo {
   index: number;
   name: string;

@@ -68,7 +68,10 @@ npm run seed:generate     # regenerate SQL seed after editing lesson content
 - **Bookmarking**: save any lesson from the feed action rail; saved list lives in the Progress tab and syncs to Supabase when signed in.
 - **Lesson search**: search by title/concept in the Progress tab's Library section; results open a read-only lesson view.
 - **Share lesson card**: native share sheet with the lesson takeaway (WhatsApp/Instagram etc.).
+- **Topic deep-dives**: 4 ordered series (Money Basics, Focus Fundamentals, Speak with Impact, Tech Literacy 101) with per-series progress; starting one plays its lessons in order through the feed. Replays never re-award XP.
+- **Weekly friends leaderboard**: friend codes (shown in Profile when signed in), mutual friendships via `add_friend_by_code`, and a friends-only weekly XP board in the Progress tab (`get_weekly_leaderboard` RPC). Signed-out users see their own weekly XP locally.
+- **Feed continuity**: the lesson queue and exact position persist across app restarts (PRD 5.1) and double as the offline lesson cache (REQ-017).
 
 ## Deferred (per PRD)
 
-Monetization, friends leaderboard (needs social graph), topic deep-dive series, offline video caching, report screenshots (needs `react-native-view-shot`), Sentry/PostHog wiring (analytics facade is in place at `app/src/lib/analytics.ts`).
+Monetization, offline video caching, report screenshots (needs `react-native-view-shot`), Sentry/PostHog wiring (analytics facade is in place at `app/src/lib/analytics.ts`), content scale-up to 50 lessons/category.

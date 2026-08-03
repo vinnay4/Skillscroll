@@ -2,18 +2,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { capture } from '../lib/analytics';
-import { fetchFeed, syncNotInterested } from '../data/api';
-import type { Category, Language, Lesson, NotInterestedReason } from '../types';
+import { fetchFeed, fetchLessonsByIds, syncNotInterested } from '../data/api';
+import type { Category, Language, Lesson, NotInterestedReason, Series } from '../types';
 
 interface FeedState {
   lessons: Lesson[];
   loading: boolean;
-  /** Feed position preserved across app backgrounding (PRD 5.1) */
+  /** Exact feed position, persisted so relaunch restores the same lesson (PRD 5.1) */
   currentIndex: number;
+  /** Language the current queue was loaded for (reload trigger on switch) */
+  feedLanguage: Language | null;
+  /** Bumped whenever the queue is replaced so the list can snap back to the top */
+  feedVersion: number;
+  /** Non-null while scrolling through a topic deep-dive (PRD 6.2, Phase 2) */
+  activeSeriesId: string | null;
   seenIds: string[];
   hiddenIds: string[];
 
   loadFeed: (topics: Category[], language: Language) => Promise<void>;
+  /** Replaces the queue with a deep-dive's lessons in series order. */
+  loadSeries: (series: Series) => Promise<void>;
   /** Appends the next page when the user nears the end of the loaded queue (pre-fetch, REQ-002). */
   extendFeed: (topics: Category[], language: Language) => Promise<void>;
   setCurrentIndex: (index: number) => void;
@@ -27,6 +35,9 @@ export const useFeedStore = create<FeedState>()(
       lessons: [],
       loading: false,
       currentIndex: 0,
+      feedLanguage: null,
+      feedVersion: 0,
+      activeSeriesId: null,
       seenIds: [],
       hiddenIds: [],
 
@@ -40,7 +51,27 @@ export const useFeedStore = create<FeedState>()(
           hiddenIds: new Set(hiddenIds),
           limit: 10,
         });
-        set({ lessons, loading: false, currentIndex: 0 });
+        set({
+          lessons,
+          loading: false,
+          currentIndex: 0,
+          feedLanguage: language,
+          feedVersion: get().feedVersion + 1,
+          activeSeriesId: null,
+        });
+      },
+
+      loadSeries: async (series) => {
+        set({ loading: true });
+        const lessons = await fetchLessonsByIds(series.lessonIds);
+        set({
+          lessons,
+          loading: false,
+          currentIndex: 0,
+          feedVersion: get().feedVersion + 1,
+          activeSeriesId: series.id,
+        });
+        capture('series_started', { seriesId: series.id, lessons: lessons.length });
       },
 
       extendFeed: async (topics, language) => {
@@ -79,8 +110,13 @@ export const useFeedStore = create<FeedState>()(
     {
       name: 'skillscroll-feed',
       storage: createJSONStorage(() => AsyncStorage),
-      // Lesson objects are refetched on launch; only the behavioral signals persist.
+      // Persisting the queue and index doubles as the offline lesson cache
+      // (REQ-017) and restores the exact feed position on relaunch (PRD 5.1).
       partialize: (state) => ({
+        lessons: state.lessons,
+        currentIndex: state.currentIndex,
+        feedLanguage: state.feedLanguage,
+        activeSeriesId: state.activeSeriesId,
         seenIds: state.seenIds,
         hiddenIds: state.hiddenIds,
       }),

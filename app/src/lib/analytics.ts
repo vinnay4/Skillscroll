@@ -16,7 +16,9 @@ export type AnalyticsEvent =
   | 'lesson_bookmarked'
   | 'lesson_shared'
   | 'lesson_reported'
-  | 'lesson_searched';
+  | 'lesson_searched'
+  | 'series_started'
+  | 'friend_added';
 
 export function capture(event: AnalyticsEvent, props?: Record<string, unknown>): void {
   if (__DEV__) {

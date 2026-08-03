@@ -141,6 +141,20 @@ export const useProgressStore = create<ProgressState>()(
         const today = todayKey();
         const quizCorrect = quizSelectedIndex === lesson.quizCorrectIndex;
 
+        // Replays (e.g. revisiting a lesson inside a deep-dive series) never
+        // re-award XP or advance the daily goal — mirrors the server-side
+        // idempotency in the complete-lesson edge function.
+        if (state.completedLessons[lesson.id]) {
+          return {
+            xpEarned: 0,
+            streakIncremented: false,
+            goalMet: false,
+            leveledUp: false,
+            levelName: getLevel(state.totalXp).name,
+            quizCorrect,
+          };
+        }
+
         const transactions: XpTransaction[] = [];
         let xpEarned = applyStreakBonus(XP_LESSON_COMPLETE, state.currentStreak);
         transactions.push(tx(xpEarned, 'lesson_complete'));

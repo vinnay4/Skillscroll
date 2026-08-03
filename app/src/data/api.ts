@@ -1,6 +1,7 @@
-import type { Category, Language, Lesson } from '../types';
+import type { Category, Language, Lesson, Series } from '../types';
 import { supabase } from '../lib/supabase';
 import { SEED_LESSONS } from './lessons';
+import { SEED_SERIES } from './series';
 
 interface FeedParams {
   topics: Category[];
@@ -72,6 +73,50 @@ export async function fetchFeed(params: FeedParams): Promise<Lesson[]> {
     }
   }
   return rankLessons(SEED_LESSONS, params);
+}
+
+/** Topic deep-dive series for the user's language (PRD 6.2, Phase 2). */
+export async function fetchSeries(language: Language): Promise<Series[]> {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('series')
+        .select('id, title, description, category, language, series_lessons(lesson_id, position)')
+        .eq('language', language)
+        .order('title');
+      if (!error && data && data.length > 0) {
+        return data.map((row: Record<string, any>) => ({
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          category: row.category,
+          language: row.language,
+          lessonIds: [...row.series_lessons]
+            .sort((a, b) => a.position - b.position)
+            .map((sl: { lesson_id: string }) => sl.lesson_id),
+        }));
+      }
+    } catch {
+      // fall through to bundled series
+    }
+  }
+  return SEED_SERIES.filter((s) => s.language === language);
+}
+
+/** Resolves lesson objects for a series, preserving the series order. */
+export async function fetchLessonsByIds(ids: string[]): Promise<Lesson[]> {
+  let pool: Lesson[] = [];
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('lessons').select('*').in('id', ids);
+      if (!error && data) pool = data.map(mapRow);
+    } catch {
+      // fall through to bundled seed content
+    }
+  }
+  if (pool.length === 0) pool = SEED_LESSONS.filter((l) => ids.includes(l.id));
+  const byId = new Map(pool.map((l) => [l.id, l]));
+  return ids.map((id) => byId.get(id)).filter((l): l is Lesson => !!l);
 }
 
 /** Lesson search over title and structure text (PRD 6.2, Phase 2). */
@@ -177,6 +222,64 @@ export async function fetchRemoteProgress(): Promise<RemoteProgress | null> {
         watchPercentage: Number(row.watch_percentage),
       })),
     };
+  } catch {
+    return null;
+  }
+}
+
+export interface LeaderboardRow {
+  displayName: string;
+  weeklyXp: number;
+  isMe: boolean;
+}
+
+/**
+ * Weekly XP leaderboard, friends only (PRD 6.2, Phase 2).
+ * Returns null when signed out or offline; callers fall back to a local
+ * single-row board computed from on-device XP transactions.
+ */
+export async function fetchWeeklyLeaderboard(): Promise<LeaderboardRow[] | null> {
+  if (!supabase) return null;
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) return null;
+    const { data, error } = await supabase.rpc('get_weekly_leaderboard');
+    if (error || !data) return null;
+    return (data as Record<string, any>[]).map((row) => ({
+      displayName: row.display_name,
+      weeklyXp: Number(row.weekly_xp),
+      isMe: row.is_me,
+    }));
+  } catch {
+    return null;
+  }
+}
+
+/** Redeems a friend code; returns the new friend's name or an error message. */
+export async function addFriendByCode(
+  code: string
+): Promise<{ friendName?: string; error?: string }> {
+  if (!supabase) return { error: 'Sign in to add friends' };
+  try {
+    const { data, error } = await supabase.rpc('add_friend_by_code', { code });
+    if (error) return { error: error.message };
+    const result = data as { friend_name?: string; error?: string };
+    if (result.error) return { error: result.error };
+    return { friendName: result.friend_name };
+  } catch {
+    return { error: 'Could not reach the server' };
+  }
+}
+
+/** The signed-in user's shareable friend code, or null when anonymous/offline. */
+export async function fetchMyFriendCode(): Promise<string | null> {
+  if (!supabase) return null;
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    const authId = authData.user?.id;
+    if (!authId) return null;
+    const { data } = await supabase.from('users').select('friend_code').eq('auth_id', authId).single();
+    return data?.friend_code ?? null;
   } catch {
     return null;
   }

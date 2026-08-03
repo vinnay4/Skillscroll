@@ -1,6 +1,8 @@
-import React from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { addFriendByCode, fetchMyFriendCode } from '../data/api';
+import { capture } from '../lib/analytics';
 import { getLevel } from '../lib/levels';
 import { useFeedStore } from '../stores/feedStore';
 import { useProgressStore } from '../stores/progressStore';
@@ -32,6 +34,27 @@ export default function ProfileScreen() {
 
   const level = getLevel(totalXp);
   const lessonsCompleted = Object.keys(completedLessons).length;
+
+  const [friendCode, setFriendCode] = useState<string | null>(null);
+  const [codeInput, setCodeInput] = useState('');
+  const [friendStatus, setFriendStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (authUserId) void fetchMyFriendCode().then(setFriendCode);
+  }, [authUserId]);
+
+  const handleAddFriend = async () => {
+    const code = codeInput.trim();
+    if (!code) return;
+    const result = await addFriendByCode(code);
+    if (result.friendName) {
+      setFriendStatus(`You and ${result.friendName} are now friends!`);
+      setCodeInput('');
+      capture('friend_added');
+    } else {
+      setFriendStatus(result.error ?? 'Something went wrong');
+    }
+  };
 
   const handleReset = () => {
     Alert.alert('Reset everything?', 'Your streak, XP and progress will be erased.', [
@@ -88,6 +111,33 @@ export default function ProfileScreen() {
           </View>
         ))}
       </View>
+
+      <Text style={styles.sectionTitle}>Friends</Text>
+      {friendCode ? (
+        <View style={styles.friendCard}>
+          <Text style={styles.friendLabel}>Your friend code</Text>
+          <Text style={styles.friendCode}>{friendCode}</Text>
+          <View style={styles.friendInputRow}>
+            <TextInput
+              style={styles.friendInput}
+              placeholder="Enter a friend's code"
+              placeholderTextColor={colors.textMuted}
+              value={codeInput}
+              onChangeText={setCodeInput}
+              autoCapitalize="characters"
+              maxLength={8}
+            />
+            <Pressable style={styles.friendAdd} onPress={() => void handleAddFriend()}>
+              <Text style={styles.friendAddText}>Add</Text>
+            </Pressable>
+          </View>
+          {friendStatus && <Text style={styles.friendStatus}>{friendStatus}</Text>}
+        </View>
+      ) : (
+        <Text style={styles.muted}>
+          Sign in to get a friend code and compete on the weekly leaderboard.
+        </Text>
+      )}
 
       <Text style={styles.sectionTitle}>Settings</Text>
       <View style={styles.settingRow}>
@@ -159,6 +209,43 @@ const styles = StyleSheet.create({
   topicPill: { borderRadius: radii.pill, paddingHorizontal: 14, paddingVertical: 7 },
   topicText: { color: colors.white, fontSize: 13, fontWeight: '700' },
   muted: { color: colors.textMuted, fontSize: 13 },
+  friendCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
+  friendLabel: { color: colors.textMuted, fontSize: 12 },
+  friendCode: {
+    color: colors.primary,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: 3,
+    marginTop: 2,
+    marginBottom: spacing.sm,
+  },
+  friendInputRow: { flexDirection: 'row', gap: spacing.sm },
+  friendInput: {
+    flex: 1,
+    height: 44,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
+    color: colors.text,
+    paddingHorizontal: spacing.md,
+  },
+  friendAdd: {
+    height: 44,
+    borderRadius: radii.md,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  friendAddText: { color: colors.white, fontSize: 14, fontWeight: '700' },
+  friendStatus: { color: colors.textSecondary, fontSize: 12, marginTop: spacing.sm },
   settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

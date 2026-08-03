@@ -51,7 +51,7 @@ export default function FeedScreen() {
   const lessons = useFeedStore((s) => s.lessons);
   const loading = useFeedStore((s) => s.loading);
   const currentIndex = useFeedStore((s) => s.currentIndex);
-  const setCurrentIndex = useFeedStore((s) => s.setCurrentIndex);
+  const feedVersion = useFeedStore((s) => s.feedVersion);
   const loadFeed = useFeedStore((s) => s.loadFeed);
   const extendFeed = useFeedStore((s) => s.extendFeed);
   const markSeen = useFeedStore((s) => s.markSeen);
@@ -76,11 +76,36 @@ export default function FeedScreen() {
   const goalLessons = goalLessonCount(dailyGoalMinutes);
   const activeLesson: Lesson | undefined = lessons[currentIndex];
 
-  // Load on first open; reload when the content language changes (REQ-015)
+  // Wait for the persisted queue to rehydrate from AsyncStorage before deciding
+  // whether to reuse it (exact position restore, PRD 5.1) or load fresh.
+  const [hydrated, setHydrated] = useState(useFeedStore.persist.hasHydrated());
   useEffect(() => {
-    void loadFeed(topics, language);
+    const unsub = useFeedStore.persist.onFinishHydration(() => setHydrated(true));
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const state = useFeedStore.getState();
+    if (state.lessons.length === 0 || state.feedLanguage !== language) {
+      void loadFeed(topics, language);
+    } else if (state.currentIndex > 0 && state.currentIndex < state.lessons.length) {
+      const index = state.currentIndex;
+      setTimeout(() => {
+        listRef.current?.scrollToIndex({ index, animated: false });
+      }, 50);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [language]);
+  }, [hydrated, language]);
+
+  // Snap back to the top whenever the queue is replaced (new feed or series)
+  const prevVersionRef = useRef(feedVersion);
+  useEffect(() => {
+    if (feedVersion !== prevVersionRef.current) {
+      prevVersionRef.current = feedVersion;
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [feedVersion]);
 
   // Pre-fetch the next page before the user reaches the end (REQ-002)
   useEffect(() => {

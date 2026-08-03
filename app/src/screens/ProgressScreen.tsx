@@ -1,16 +1,18 @@
+import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DailyGoalBar from '../components/DailyGoalBar';
 import LessonDetailModal from '../components/LessonDetailModal';
-import { searchLessons } from '../data/api';
+import { fetchSeries, fetchWeeklyLeaderboard, LeaderboardRow, searchLessons } from '../data/api';
 import { capture } from '../lib/analytics';
 import { getLevel } from '../lib/levels';
 import { useBookmarkStore } from '../stores/bookmarkStore';
+import { useFeedStore } from '../stores/feedStore';
 import { useProgressStore } from '../stores/progressStore';
 import { goalLessonCount, useUserStore } from '../stores/userStore';
 import { categoryColors, categoryLabels, colors, radii, spacing } from '../theme';
-import type { Lesson } from '../types';
+import type { Lesson, Series } from '../types';
 
 const REASON_LABELS: Record<string, string> = {
   lesson_complete: 'Lesson completed',
@@ -33,9 +35,36 @@ export default function ProgressScreen() {
   const language = useUserStore((s) => s.language);
   const bookmarks = useBookmarkStore((s) => s.bookmarks);
 
+  const navigation = useNavigation();
+  const loadSeries = useFeedStore((s) => s.loadSeries);
+
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Lesson[]>([]);
   const [openLesson, setOpenLesson] = useState<Lesson | null>(null);
+  const [seriesList, setSeriesList] = useState<Series[]>([]);
+  const [board, setBoard] = useState<LeaderboardRow[] | null>(null);
+
+  useEffect(() => {
+    void fetchSeries(language).then(setSeriesList);
+  }, [language]);
+
+  useEffect(() => {
+    void fetchWeeklyLeaderboard().then(setBoard);
+  }, []);
+
+  // Local fallback board when signed out/offline: just your own weekly XP
+  const weekAgo = Date.now() - 7 * 86400000;
+  const localWeeklyXp = xpTransactions
+    .filter((t) => Date.parse(t.createdAt) >= weekAgo)
+    .reduce((sum, t) => sum + t.amount, 0);
+  const rows: LeaderboardRow[] =
+    board ?? [{ displayName: 'You', weeklyXp: localWeeklyXp, isMe: true }];
+
+  const startSeries = (series: Series) => {
+    void loadSeries(series).then(() => {
+      navigation.navigate('Feed' as never);
+    });
+  };
 
   // Debounced lesson search (PRD 6.2, Phase 2)
   useEffect(() => {
@@ -115,6 +144,54 @@ export default function ProgressScreen() {
           <Text style={styles.cardSubtext}>Top level reached. Legend.</Text>
         )}
       </View>
+
+      <Text style={styles.sectionTitle}>Weekly leaderboard</Text>
+      <View style={styles.boardCard}>
+        {rows.map((row, index) => (
+          <View key={`${row.displayName}-${index}`} style={styles.boardRow}>
+            <Text style={styles.boardRank}>{index + 1}</Text>
+            <Text style={[styles.boardName, row.isMe && styles.boardMe]} numberOfLines={1}>
+              {row.displayName}
+              {row.isMe ? ' (you)' : ''}
+            </Text>
+            <Text style={styles.boardXp}>{row.weeklyXp} XP</Text>
+          </View>
+        ))}
+        {board === null && (
+          <Text style={styles.boardHint}>
+            Sign in and add friends from the Profile tab to compete.
+          </Text>
+        )}
+        {board !== null && rows.length === 1 && (
+          <Text style={styles.boardHint}>Add friends from the Profile tab to compete.</Text>
+        )}
+      </View>
+
+      <Text style={styles.sectionTitle}>Deep dives</Text>
+      {seriesList.map((series) => {
+        const done = series.lessonIds.filter((id) => completedLessons[id]).length;
+        const total = series.lessonIds.length;
+        return (
+          <Pressable key={series.id} style={styles.seriesCard} onPress={() => startSeries(series)}>
+            <View style={styles.seriesHeader}>
+              <View style={[styles.seriesPill, { backgroundColor: categoryColors[series.category] }]}>
+                <Text style={styles.seriesPillText}>{categoryLabels[series.category]}</Text>
+              </View>
+              <Text style={styles.seriesProgress}>
+                {done}/{total}
+              </Text>
+            </View>
+            <Text style={styles.seriesTitle}>{series.title}</Text>
+            <Text style={styles.seriesDescription} numberOfLines={2}>
+              {series.description}
+            </Text>
+            <View style={styles.seriesTrack}>
+              <View style={[styles.seriesFill, { width: `${(done / total) * 100}%` }]} />
+            </View>
+            <Text style={styles.seriesCta}>{done === 0 ? 'Start series ▸' : done === total ? 'Replay series ▸' : 'Continue ▸'}</Text>
+          </Pressable>
+        );
+      })}
 
       <Text style={styles.sectionTitle}>Library</Text>
       <TextInput
@@ -245,6 +322,54 @@ const styles = StyleSheet.create({
   lessonRowTitle: { color: colors.text, fontSize: 14, fontWeight: '600' },
   lessonRowMeta: { color: colors.textMuted, fontSize: 11, marginTop: 1 },
   lessonRowDone: { color: colors.success, fontSize: 14, fontWeight: '700' },
+  seriesCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  seriesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  seriesPill: { borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  seriesPillText: { color: colors.white, fontSize: 11, fontWeight: '700' },
+  seriesProgress: { color: colors.textMuted, fontSize: 12, fontWeight: '700' },
+  seriesTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  seriesDescription: { color: colors.textSecondary, fontSize: 13, marginTop: 2, lineHeight: 18 },
+  seriesTrack: {
+    height: 4,
+    borderRadius: radii.pill,
+    backgroundColor: colors.border,
+    overflow: 'hidden',
+    marginTop: spacing.sm,
+  },
+  seriesFill: { height: '100%', backgroundColor: colors.primary },
+  seriesCta: { color: colors.primary, fontSize: 13, fontWeight: '700', marginTop: spacing.sm },
+  boardCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  boardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 8,
+  },
+  boardRank: { color: colors.textMuted, fontSize: 13, fontWeight: '800', width: 18 },
+  boardName: { color: colors.text, fontSize: 14, fontWeight: '600', flex: 1 },
+  boardMe: { color: colors.primary },
+  boardXp: { color: colors.gold, fontSize: 13, fontWeight: '800' },
+  boardHint: { color: colors.textMuted, fontSize: 12, paddingVertical: 6 },
   txRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
