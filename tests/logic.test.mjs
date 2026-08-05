@@ -9,6 +9,7 @@ import {
   XP_QUIZ_CORRECT,
 } from '../app/src/lib/levels.ts';
 import { daysBetween, todayKey, weekKey } from '../app/src/lib/dates.ts';
+import { resolveRollover } from '../app/src/lib/streak.ts';
 
 test('level thresholds match the PRD ladder', () => {
   assert.equal(getLevel(0).name, 'Beginner');
@@ -53,4 +54,78 @@ test('weekKey is stable within a week and changes across weeks', () => {
   // Mon 2026-07-27 through Sun 2026-08-02 share an ISO week
   assert.equal(weekKey(new Date(2026, 6, 27)), weekKey(new Date(2026, 7, 2)));
   assert.notEqual(weekKey(new Date(2026, 7, 2)), weekKey(new Date(2026, 7, 3)));
+});
+
+const baseState = {
+  dailyDate: '2026-08-01',
+  currentStreak: 5,
+  lastGoalMetDate: '2026-08-01',
+  freezeAvailable: true,
+  freezeGrantedWeek: '2026-W31',
+};
+
+test('rollover: same day is a no-op (except weekly freeze grant)', () => {
+  const updates = resolveRollover(baseState, '2026-08-01', '2026-W31');
+  assert.deepEqual(updates, {});
+});
+
+test('rollover: streak survives when goal was met yesterday', () => {
+  const updates = resolveRollover(baseState, '2026-08-02', '2026-W31');
+  assert.equal(updates.dailyCompletedCount, 0);
+  assert.equal(updates.goalMetToday, false);
+  assert.equal(updates.currentStreak, undefined); // untouched
+});
+
+test('rollover: one fully-missed day consumes the freeze, streak survives', () => {
+  const updates = resolveRollover(baseState, '2026-08-03', '2026-W31');
+  assert.equal(updates.freezeAvailable, false);
+  assert.equal(updates.currentStreak, undefined);
+});
+
+test('rollover: one missed day without a freeze resets the streak', () => {
+  const updates = resolveRollover(
+    { ...baseState, freezeAvailable: false },
+    '2026-08-03',
+    '2026-W31'
+  );
+  assert.equal(updates.currentStreak, 0);
+});
+
+test('rollover: two missed days reset the streak even with a freeze', () => {
+  const updates = resolveRollover(baseState, '2026-08-04', '2026-W31');
+  assert.equal(updates.currentStreak, 0);
+  // freeze is preserved for future single-day misses
+  assert.equal(updates.freezeAvailable, undefined);
+});
+
+test('rollover: new ISO week grants a fresh freeze', () => {
+  const updates = resolveRollover(
+    { ...baseState, freezeAvailable: false },
+    '2026-08-01',
+    '2026-W32'
+  );
+  assert.equal(updates.freezeAvailable, true);
+  assert.equal(updates.freezeGrantedWeek, '2026-W32');
+});
+
+test('rollover: freshly granted freeze can cover a missed day in the same call', () => {
+  const updates = resolveRollover(
+    { ...baseState, freezeAvailable: false, freezeGrantedWeek: '2026-W31' },
+    '2026-08-03',
+    '2026-W32'
+  );
+  // week rolled over granting a freeze, which is then consumed by the gap
+  assert.equal(updates.freezeAvailable, false);
+  assert.equal(updates.freezeGrantedWeek, '2026-W32');
+  assert.equal(updates.currentStreak, undefined);
+});
+
+test('rollover: zero streak never consumes a freeze', () => {
+  const updates = resolveRollover(
+    { ...baseState, currentStreak: 0, lastGoalMetDate: null },
+    '2026-08-05',
+    '2026-W31'
+  );
+  assert.equal(updates.freezeAvailable, undefined);
+  assert.equal(updates.currentStreak, undefined);
 });

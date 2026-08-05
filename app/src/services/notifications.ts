@@ -15,6 +15,7 @@ Notifications.setNotificationHandler({
 
 const STREAK_REMINDER_ID = 'streak-reminder';
 const COMEBACK_NUDGE_ID = 'comeback-nudge';
+const WEEKLY_SUMMARY_ID = 'weekly-summary';
 
 /** Requested only after the user's first completed lesson, never during onboarding (REQ-023). */
 export async function requestPermissionAfterFirstLesson(): Promise<boolean> {
@@ -36,6 +37,35 @@ export async function requestPermissionAfterFirstLesson(): Promise<boolean> {
   capture('notification_permission_result', { granted });
   if (granted) void registerPushToken();
   return granted;
+}
+
+/**
+ * Sunday-evening weekly summary with actual numbers, never generic copy
+ * (PRD 5.5). Content is baked at scheduling time, so this is rearmed with
+ * fresh stats on every app open; server push replaces it for signed-in users.
+ */
+export async function scheduleWeeklySummary(stats: {
+  weeklyXp: number;
+  weeklyLessons: number;
+  streak: number;
+}): Promise<void> {
+  if (!Device.isDevice) return;
+  await Notifications.cancelScheduledNotificationAsync(WEEKLY_SUMMARY_ID).catch(() => {});
+  if (stats.weeklyLessons === 0) return; // nothing to summarize, don't spam
+  const streakPart = stats.streak > 0 ? ` Streak: ${stats.streak} days.` : '';
+  await Notifications.scheduleNotificationAsync({
+    identifier: WEEKLY_SUMMARY_ID,
+    content: {
+      title: 'Your week on SkillScroll',
+      body: `${stats.weeklyLessons} lessons, ${stats.weeklyXp} XP this week.${streakPart} Keep it rolling.`,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+      weekday: 1, // Sunday
+      hour: 19,
+      minute: 0,
+    },
+  });
 }
 
 /**

@@ -2,7 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { capture } from '../lib/analytics';
-import { daysBetween, todayKey, weekKey } from '../lib/dates';
+import { todayKey, weekKey } from '../lib/dates';
+import { resolveRollover } from '../lib/streak';
 import {
   applyStreakBonus,
   getLevel,
@@ -84,38 +85,7 @@ export const useProgressStore = create<ProgressState>()(
       ...initialState,
 
       rolloverIfNeeded: () => {
-        const state = get();
-        const today = todayKey();
-        const thisWeek = weekKey();
-        const updates: Partial<ProgressState> = {};
-
-        // Weekly streak-freeze grant
-        if (state.freezeGrantedWeek !== thisWeek) {
-          updates.freezeAvailable = true;
-          updates.freezeGrantedWeek = thisWeek;
-        }
-
-        if (state.dailyDate !== today) {
-          updates.dailyDate = today;
-          updates.dailyCompletedCount = 0;
-          updates.goalMetToday = false;
-
-          // Streak survives if goal was met yesterday; a single missed day can
-          // be covered by the weekly freeze; otherwise reset to 0 (REQ-009).
-          if (state.currentStreak > 0 && state.lastGoalMetDate) {
-            const gap = daysBetween(today, state.lastGoalMetDate);
-            if (gap > 1) {
-              const freezeCoversGap =
-                gap === 2 && (updates.freezeAvailable ?? state.freezeAvailable);
-              if (freezeCoversGap) {
-                updates.freezeAvailable = false;
-              } else {
-                updates.currentStreak = 0;
-              }
-            }
-          }
-        }
-
+        const updates = resolveRollover(get(), todayKey(), weekKey());
         if (Object.keys(updates).length > 0) set(updates);
       },
 

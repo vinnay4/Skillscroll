@@ -6,9 +6,24 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import { fetchRemoteProgress } from './src/data/api';
 import { capture } from './src/lib/analytics';
-import { armComebackNudge } from './src/services/notifications';
+import { armComebackNudge, scheduleWeeklySummary } from './src/services/notifications';
 import { useProgressStore } from './src/stores/progressStore';
 import { useUserStore } from './src/stores/userStore';
+
+/** Rearms locally scheduled notifications with fresh, specific numbers (PRD 5.5). */
+function rearmNotifications() {
+  if (!useUserStore.getState().notificationPromptShown) return;
+  const progress = useProgressStore.getState();
+  const weekAgo = Date.now() - 7 * 86400000;
+  const weeklyXp = progress.xpTransactions
+    .filter((t) => Date.parse(t.createdAt) >= weekAgo)
+    .reduce((sum, t) => sum + t.amount, 0);
+  const weeklyLessons = Object.values(progress.completedLessons).filter(
+    (l) => Date.parse(l.completedAt) >= weekAgo
+  ).length;
+  void armComebackNudge(progress.currentStreak);
+  void scheduleWeeklySummary({ weeklyXp, weeklyLessons, streak: progress.currentStreak });
+}
 
 export default function App() {
   useEffect(() => {
@@ -32,15 +47,11 @@ export default function App() {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         useProgressStore.getState().rolloverIfNeeded();
-        if (useUserStore.getState().notificationPromptShown) {
-          void armComebackNudge(useProgressStore.getState().currentStreak);
-        }
+        rearmNotifications();
       }
     });
 
-    if (useUserStore.getState().notificationPromptShown) {
-      void armComebackNudge(useProgressStore.getState().currentStreak);
-    }
+    rearmNotifications();
 
     return () => sub.remove();
   }, []);

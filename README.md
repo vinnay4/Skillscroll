@@ -34,13 +34,13 @@ npm install
 npm start          # Expo dev server → scan QR with Expo Go, or press i / a
 ```
 
-The app runs fully offline in **local demo mode** out of the box: 32 bundled lessons (24 English + 8 Hindi) across Finance, Technology, Communication, and Productivity, with all progress persisted on-device (AsyncStorage). No backend needed.
+The app runs fully offline in **local demo mode** out of the box: 56 bundled lessons (48 English + 8 Hindi) across Finance, Technology, Communication, and Productivity, with all progress persisted on-device (AsyncStorage). No backend needed.
 
 ### Connecting Supabase (optional)
 
 1. Create a Supabase project and run the migrations in `supabase/migrations/` in order, then `supabase/seed/seed_lessons.sql`.
 2. Deploy edge functions: `supabase functions deploy complete-lesson submit-quiz feed streak-reset send-reminder`.
-3. Schedule `streak-reset` and `send-reminder` hourly (Supabase cron), so every timezone is processed at its own midnight / 9pm.
+3. Schedule `streak-reset`, `send-reminder`, and `send-weekly-summary` hourly (Supabase cron), so every timezone is processed at its own midnight / 9pm / Sunday 7pm.
 4. Copy `app/.env.example` to `app/.env` and fill in your project URL + anon key.
 
 ## Checks
@@ -58,7 +58,8 @@ npm run seed:generate     # regenerate SQL seed after editing lesson content
 - **Quiz**: bottom sheet slides up on lesson end (spring, 55% height); 4-option MCQ; selected → 150ms → green/red reveal with the correct answer always shown; feed swiping is disabled until answered; "Next Lesson" CTA after 1s.
 - **Gamification**: +10 XP per lesson, +5 per correct quiz, 1.5× streak bonus from day 7; levels Beginner → Explorer → Learner → Scholar → Master; streak increments the moment the daily goal is reached; midnight reset with a weekly earned streak freeze; full-screen confetti (180 particles, ≤2.5s, success haptic) on goal completion; level-up modal.
 - **Onboarding**: 3 screens (topic pills → daily goal as scrolls → Google/Apple/skip), no email or password; anonymous sessions persist on device.
-- **Notifications**: permission requested only after the first completed lesson; 9pm streak reminder with the actual streak number; 48h comeback nudge (armed locally, pushed back on every open); no notification on days the goal is already met.
+- **Notifications**: permission requested only after the first completed lesson; 9pm streak reminder with the actual streak number; 48h comeback nudge (armed locally, pushed back on every open); Sunday-evening weekly summary with actual XP/lesson/streak numbers; no notification on days the goal is already met.
+- **Support**: self-serve Help section with 10 FAQ cards and an email contact link (24h SLA) in the Profile tab.
 - **Backend**: full Postgres schema with RLS, idempotent server-side XP/streak/goal accounting in edge functions, rule-based feed ranking (topics → unseen → quality score), Expo push delivery for reminders, push-token registration, and cross-device progress sync on app open for signed-in users.
 - **Hindi content** (REQ-015): feed, search, and seed content are language-aware; switch English ↔ हिन्दी from the Profile tab.
 - **Issue reporting** (REQ-022): long-press any lesson for 2 seconds to open a report sheet (category chips + free text).
@@ -72,6 +73,10 @@ npm run seed:generate     # regenerate SQL seed after editing lesson content
 - **Weekly friends leaderboard**: friend codes (shown in Profile when signed in), mutual friendships via `add_friend_by_code`, and a friends-only weekly XP board in the Progress tab (`get_weekly_leaderboard` RPC). Signed-out users see their own weekly XP locally.
 - **Feed continuity**: the lesson queue and exact position persist across app restarts (PRD 5.1) and double as the offline lesson cache (REQ-017).
 
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every PR: strict typecheck, logic tests, a check that the SQL seed matches the lesson data, and a Metro bundle export.
+
 ## Deferred (per PRD)
 
-Monetization, offline video caching, report screenshots (needs `react-native-view-shot`), Sentry/PostHog wiring (analytics facade is in place at `app/src/lib/analytics.ts`), content scale-up to 50 lessons/category.
+Monetization, offline video caching, report screenshots (needs `react-native-view-shot`), Sentry/PostHog wiring (analytics facade is in place at `app/src/lib/analytics.ts`), remaining content scale-up (12/50 lessons per category in English).

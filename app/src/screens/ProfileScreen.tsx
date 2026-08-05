@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addFriendByCode, fetchMyFriendCode } from '../data/api';
+import { FAQ_ITEMS, SUPPORT_EMAIL } from '../data/faq';
 import { capture } from '../lib/analytics';
 import { getLevel } from '../lib/levels';
 import { useFeedStore } from '../stores/feedStore';
@@ -38,6 +39,7 @@ export default function ProfileScreen() {
   const [friendCode, setFriendCode] = useState<string | null>(null);
   const [codeInput, setCodeInput] = useState('');
   const [friendStatus, setFriendStatus] = useState<string | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
     if (authUserId) void fetchMyFriendCode().then(setFriendCode);
@@ -152,6 +154,27 @@ export default function ProfileScreen() {
         <Text style={styles.settingValue}>{language === 'en' ? 'English' : 'हिन्दी'}</Text>
       </Pressable>
 
+      <Text style={styles.sectionTitle}>Help &amp; FAQ</Text>
+      {FAQ_ITEMS.map((item, index) => (
+        <Pressable
+          key={index}
+          style={styles.faqCard}
+          onPress={() => setOpenFaq(openFaq === index ? null : index)}
+        >
+          <View style={styles.faqHeader}>
+            <Text style={styles.faqQuestion}>{item.question}</Text>
+            <Text style={styles.faqChevron}>{openFaq === index ? '▾' : '▸'}</Text>
+          </View>
+          {openFaq === index && <Text style={styles.faqAnswer}>{item.answer}</Text>}
+        </Pressable>
+      ))}
+      <Pressable
+        style={styles.contactRow}
+        onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=SkillScroll%20support`)}
+      >
+        <Text style={styles.contactText}>Still stuck? Email {SUPPORT_EMAIL} — 24h response</Text>
+      </Pressable>
+
       <Pressable style={styles.resetButton} onPress={handleReset}>
         <Text style={styles.resetText}>Reset all progress</Text>
       </Pressable>
@@ -246,6 +269,20 @@ const styles = StyleSheet.create({
   },
   friendAddText: { color: colors.white, fontSize: 14, fontWeight: '700' },
   friendStatus: { color: colors.textSecondary, fontSize: 12, marginTop: spacing.sm },
+  faqCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.xs + 2,
+  },
+  faqHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  faqQuestion: { color: colors.text, fontSize: 14, fontWeight: '600', flex: 1, marginRight: spacing.sm },
+  faqChevron: { color: colors.textMuted, fontSize: 14 },
+  faqAnswer: { color: colors.textSecondary, fontSize: 13, lineHeight: 20, marginTop: spacing.sm },
+  contactRow: { paddingVertical: spacing.md, alignItems: 'center' },
+  contactText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
