@@ -84,10 +84,16 @@ export default function FeedScreen() {
     return unsub;
   }, []);
 
+  const topicsKey = [...topics].sort().join(',');
   useEffect(() => {
     if (!hydrated) return;
     const state = useFeedStore.getState();
-    if (state.lessons.length === 0 || state.feedLanguage !== language) {
+    const stale =
+      state.lessons.length === 0 ||
+      state.feedLanguage !== language ||
+      // Topic edits reload the feed, but not when a deep-dive is in progress
+      (state.activeSeriesId === null && state.feedTopicsKey !== topicsKey);
+    if (stale) {
       void loadFeed(topics, language);
     } else if (state.currentIndex > 0 && state.currentIndex < state.lessons.length) {
       const index = state.currentIndex;
@@ -96,7 +102,7 @@ export default function FeedScreen() {
       }, 50);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, language]);
+  }, [hydrated, language, topicsKey]);
 
   // Snap back to the top whenever the queue is replaced (new feed or series)
   const prevVersionRef = useRef(feedVersion);

@@ -12,6 +12,8 @@ interface FeedState {
   currentIndex: number;
   /** Language the current queue was loaded for (reload trigger on switch) */
   feedLanguage: Language | null;
+  /** Sorted topic key the queue was loaded for (reload trigger on edit) */
+  feedTopicsKey: string | null;
   /** Bumped whenever the queue is replaced so the list can snap back to the top */
   feedVersion: number;
   /** Non-null while scrolling through a topic deep-dive (PRD 6.2, Phase 2) */
@@ -36,6 +38,7 @@ export const useFeedStore = create<FeedState>()(
       loading: false,
       currentIndex: 0,
       feedLanguage: null,
+      feedTopicsKey: null,
       feedVersion: 0,
       activeSeriesId: null,
       seenIds: [],
@@ -56,6 +59,7 @@ export const useFeedStore = create<FeedState>()(
           loading: false,
           currentIndex: 0,
           feedLanguage: language,
+          feedTopicsKey: [...topics].sort().join(','),
           feedVersion: get().feedVersion + 1,
           activeSeriesId: null,
         });
@@ -116,6 +120,7 @@ export const useFeedStore = create<FeedState>()(
         lessons: state.lessons,
         currentIndex: state.currentIndex,
         feedLanguage: state.feedLanguage,
+        feedTopicsKey: state.feedTopicsKey,
         activeSeriesId: state.activeSeriesId,
         seenIds: state.seenIds,
         hiddenIds: state.hiddenIds,

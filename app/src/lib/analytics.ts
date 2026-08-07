@@ -1,7 +1,8 @@
+import PostHog from 'posthog-react-native';
+
 /**
- * Analytics event contract (PRD 14.4). This is a thin facade so PostHog can be
- * dropped in later without touching call sites: replace `capture` internals
- * with `posthog.capture(event, props)` once a POSTHOG_API_KEY is provisioned.
+ * Analytics event contract (PRD 14.4), routed to PostHog when
+ * EXPO_PUBLIC_POSTHOG_API_KEY is set and logged locally in dev otherwise.
  */
 export type AnalyticsEvent =
   | 'app_opened'
@@ -20,7 +21,16 @@ export type AnalyticsEvent =
   | 'series_started'
   | 'friend_added';
 
+const apiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
+
+export const posthog: PostHog | null = apiKey
+  ? new PostHog(apiKey, {
+      host: process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
+    })
+  : null;
+
 export function capture(event: AnalyticsEvent, props?: Record<string, unknown>): void {
+  posthog?.capture(event, props as Record<string, string | number | boolean> | undefined);
   if (__DEV__) {
     console.log(`[analytics] ${event}`, props ?? {});
   }

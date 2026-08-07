@@ -28,7 +28,7 @@ export const FAQ_ITEMS: { question: string; answer: string }[] = [
   {
     question: 'How do I change my topics or daily goal?',
     answer:
-      'Your topics and daily goal are shown in the Profile tab. Resetting progress restarts onboarding where you can pick new ones. In-place editing is coming in a future update.',
+      'In the Profile tab: tap topic pills to add or remove them (your feed updates instantly), and pick 5, 10, or 15 minutes under Settings → Daily goal.',
   },
   {
     question: 'How do I switch to Hindi?',

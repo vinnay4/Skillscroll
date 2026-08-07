@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { AppState } from 'react-native';
@@ -9,6 +10,12 @@ import { capture } from './src/lib/analytics';
 import { armComebackNudge, scheduleWeeklySummary } from './src/services/notifications';
 import { useProgressStore } from './src/stores/progressStore';
 import { useUserStore } from './src/stores/userStore';
+
+// Crash reporting activates when a DSN is provided (REQ-024: >99.5% crash-free)
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({ dsn: sentryDsn, tracesSampleRate: 0.2 });
+}
 
 /** Rearms locally scheduled notifications with fresh, specific numbers (PRD 5.5). */
 function rearmNotifications() {
@@ -25,7 +32,7 @@ function rearmNotifications() {
   void scheduleWeeklySummary({ weeklyXp, weeklyLessons, streak: progress.currentStreak });
 }
 
-export default function App() {
+function App() {
   useEffect(() => {
     capture('app_opened');
     useProgressStore.getState().rolloverIfNeeded();
@@ -65,3 +72,5 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+export default sentryDsn ? Sentry.wrap(App) : App;

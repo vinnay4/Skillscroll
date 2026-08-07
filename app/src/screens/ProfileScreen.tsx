@@ -7,8 +7,12 @@ import { capture } from '../lib/analytics';
 import { getLevel } from '../lib/levels';
 import { useFeedStore } from '../stores/feedStore';
 import { useProgressStore } from '../stores/progressStore';
-import { useUserStore } from '../stores/userStore';
+import { DailyGoalMinutes, useUserStore } from '../stores/userStore';
 import { categoryColors, categoryLabels, colors, radii, spacing } from '../theme';
+import type { Category } from '../types';
+
+const ALL_TOPICS: Category[] = ['finance', 'technology', 'communication', 'productivity'];
+const GOAL_OPTIONS: DailyGoalMinutes[] = [5, 10, 15];
 
 const LEVEL_EMOJI: Record<string, string> = {
   Beginner: '🌱',
@@ -23,7 +27,9 @@ export default function ProfileScreen() {
   const displayName = useUserStore((s) => s.displayName);
   const authUserId = useUserStore((s) => s.authUserId);
   const topics = useUserStore((s) => s.topics);
+  const setTopics = useUserStore((s) => s.setTopics);
   const dailyGoalMinutes = useUserStore((s) => s.dailyGoalMinutes);
+  const setDailyGoal = useUserStore((s) => s.setDailyGoal);
   const language = useUserStore((s) => s.language);
   const setLanguage = useUserStore((s) => s.setLanguage);
   const resetUser = useUserStore((s) => s.resetAll);
@@ -106,13 +112,31 @@ export default function ProfileScreen() {
 
       <Text style={styles.sectionTitle}>Your topics</Text>
       <View style={styles.topicRow}>
-        {topics.length === 0 && <Text style={styles.muted}>All topics</Text>}
-        {topics.map((topic) => (
-          <View key={topic} style={[styles.topicPill, { backgroundColor: categoryColors[topic] }]}>
-            <Text style={styles.topicText}>{categoryLabels[topic]}</Text>
-          </View>
-        ))}
+        {ALL_TOPICS.map((topic) => {
+          const selected = topics.includes(topic);
+          return (
+            <Pressable
+              key={topic}
+              style={[
+                styles.topicPill,
+                selected
+                  ? { backgroundColor: categoryColors[topic] }
+                  : styles.topicPillInactive,
+              ]}
+              onPress={() => {
+                // At least one topic must stay selected to keep the feed ranked
+                const next = selected ? topics.filter((t) => t !== topic) : [...topics, topic];
+                if (next.length > 0) setTopics(next);
+              }}
+            >
+              <Text style={[styles.topicText, !selected && styles.topicTextInactive]}>
+                {categoryLabels[topic]}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
+      <Text style={styles.muted}>Tap to add or remove — your feed updates instantly.</Text>
 
       <Text style={styles.sectionTitle}>Friends</Text>
       {friendCode ? (
@@ -144,7 +168,24 @@ export default function ProfileScreen() {
       <Text style={styles.sectionTitle}>Settings</Text>
       <View style={styles.settingRow}>
         <Text style={styles.settingLabel}>Daily goal</Text>
-        <Text style={styles.settingValue}>{dailyGoalMinutes} min</Text>
+        <View style={styles.goalSegment}>
+          {GOAL_OPTIONS.map((minutes) => (
+            <Pressable
+              key={minutes}
+              style={[styles.goalOption, dailyGoalMinutes === minutes && styles.goalOptionActive]}
+              onPress={() => setDailyGoal(minutes)}
+            >
+              <Text
+                style={[
+                  styles.goalOptionText,
+                  dailyGoalMinutes === minutes && styles.goalOptionTextActive,
+                ]}
+              >
+                {minutes}m
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
       <Pressable
         style={styles.settingRow}
@@ -228,9 +269,27 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
-  topicRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  topicRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xs },
   topicPill: { borderRadius: radii.pill, paddingHorizontal: 14, paddingVertical: 7 },
+  topicPillInactive: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   topicText: { color: colors.white, fontSize: 13, fontWeight: '700' },
+  topicTextInactive: { color: colors.textMuted },
+  goalSegment: { flexDirection: 'row', gap: 6 },
+  goalOption: {
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  goalOptionActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  goalOptionText: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
+  goalOptionTextActive: { color: colors.white },
   muted: { color: colors.textMuted, fontSize: 13 },
   friendCard: {
     backgroundColor: colors.surface,
