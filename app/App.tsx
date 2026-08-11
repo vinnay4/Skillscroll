@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import RootNavigator from './src/navigation/RootNavigator';
 import { fetchRemoteProgress } from './src/data/api';
 import { capture } from './src/lib/analytics';
@@ -49,12 +50,26 @@ function App() {
       }
     });
 
+    // Session metrics for PRD §10 targets (session length, lessons/session):
+    // a session runs from foreground to background.
+    let sessionStartedAt = Date.now();
+    let sessionStartLessons = Object.keys(useProgressStore.getState().completedLessons).length;
+
     // Feed position is preserved; day rollover and the 48h comeback nudge are
     // re-evaluated whenever the app returns to the foreground (PRD 5.1, REQ-018).
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
+        sessionStartedAt = Date.now();
+        sessionStartLessons = Object.keys(useProgressStore.getState().completedLessons).length;
         useProgressStore.getState().rolloverIfNeeded();
         rearmNotifications();
+      } else if (state === 'background') {
+        const lessonsCompleted =
+          Object.keys(useProgressStore.getState().completedLessons).length - sessionStartLessons;
+        capture('session_ended', {
+          durationSeconds: Math.round((Date.now() - sessionStartedAt) / 1000),
+          lessonsCompleted,
+        });
       }
     });
 
@@ -67,7 +82,9 @@ function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="light" />
-        <RootNavigator />
+        <ErrorBoundary>
+          <RootNavigator />
+        </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

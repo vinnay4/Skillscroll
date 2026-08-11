@@ -46,9 +46,11 @@ The app runs fully offline in **local demo mode** out of the box: 76 bundled les
 ## Checks
 
 ```bash
-npm test                  # pure-logic tests (XP, levels, streak date math)
-npm run typecheck         # strict TypeScript over the app
-npm run seed:generate     # regenerate SQL seed after editing lesson content
+npm test                          # pure-logic tests (XP, levels, streak rollover)
+npm --prefix app test             # jest: store accounting, feed ranking, quiz state machine
+npm run typecheck                 # strict TypeScript over the app
+node --experimental-strip-types scripts/validate-content.mjs   # editorial rules + coverage report
+npm run seed:generate             # regenerate SQL seed after editing lesson content
 ```
 
 ## What's implemented (MVP scope, PRD §6.1)

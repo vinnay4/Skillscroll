@@ -19,7 +19,8 @@ export type AnalyticsEvent =
   | 'lesson_reported'
   | 'lesson_searched'
   | 'series_started'
-  | 'friend_added';
+  | 'friend_added'
+  | 'session_ended';
 
 const apiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
 

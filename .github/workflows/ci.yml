@@ -28,6 +28,13 @@ jobs:
       - name: Logic tests
         run: node --experimental-strip-types --test tests/logic.test.mjs
 
+      - name: App tests (jest)
+        working-directory: app
+        run: npx jest --ci
+
+      - name: Validate content (editorial rules + coverage)
+        run: node --experimental-strip-types scripts/validate-content.mjs
+
       - name: Verify seed is up to date
         run: |
           node --experimental-strip-types scripts/generate-seed.mjs
