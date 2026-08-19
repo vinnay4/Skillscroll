@@ -1,0 +1,11 @@
+{
+  "name": "skillscroll",
+  "private": true,
+  "description": "SkillScroll — micro-learning app that turns doomscrolling into skill-building",
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/logic.test.mjs",
+    "seed:generate": "node --experimental-strip-types scripts/generate-seed.mjs",
+    "typecheck": "npm --prefix app run typecheck",
+    "start": "npm --prefix app run start"
+  }
+}

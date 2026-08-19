@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install app dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: app
+        run: npx tsc --noEmit
+
+      - name: Logic tests
+        run: node --experimental-strip-types --test tests/logic.test.mjs
+
+      - name: App tests (jest)
+        working-directory: app
+        run: npx jest --ci
+
+      - name: Validate content (editorial rules + coverage)
+        run: node --experimental-strip-types scripts/validate-content.mjs
+
+      - name: Verify seed is up to date
+        run: |
+          node --experimental-strip-types scripts/generate-seed.mjs
+          git diff --exit-code supabase/seed/seed_lessons.sql
+
+      - name: Bundle app (Metro export)
+        working-directory: app
+        run: npx expo export --platform android --output-dir /tmp/export
