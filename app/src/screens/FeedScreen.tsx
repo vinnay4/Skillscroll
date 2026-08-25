@@ -156,7 +156,10 @@ export default function FeedScreen() {
         markNotificationPromptShown();
         void requestPermissionAfterFirstLesson().then((granted) => {
           if (granted && !result.goalMet) {
-            void scheduleStreakReminder(useProgressStore.getState().currentStreak);
+            void scheduleStreakReminder(
+              useProgressStore.getState().currentStreak,
+              useUserStore.getState().reminderHour
+            );
           }
         });
       }

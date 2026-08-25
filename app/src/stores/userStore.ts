@@ -23,10 +23,13 @@ interface UserState {
   overlayDismissed: boolean;
   /** Notification permission is requested only after the first completed lesson (REQ-023) */
   notificationPromptShown: boolean;
+  /** Local hour (0–23) for the daily streak reminder (PRD 5.5: user's preferred time) */
+  reminderHour: number;
 
   setTopics: (topics: Category[]) => void;
   setDailyGoal: (minutes: DailyGoalMinutes) => void;
   setLanguage: (language: Language) => void;
+  setReminderHour: (hour: number) => void;
   completeOnboarding: (displayName: string, authUserId: string | null) => void;
   toggleSound: () => void;
   dismissOverlay: () => void;
@@ -44,6 +47,7 @@ const initialState = {
   soundOn: false,
   overlayDismissed: false,
   notificationPromptShown: false,
+  reminderHour: 21,
 };
 
 export const useUserStore = create<UserState>()(
@@ -53,6 +57,7 @@ export const useUserStore = create<UserState>()(
       setTopics: (topics) => set({ topics }),
       setDailyGoal: (dailyGoalMinutes) => set({ dailyGoalMinutes }),
       setLanguage: (language) => set({ language }),
+      setReminderHour: (reminderHour) => set({ reminderHour }),
       completeOnboarding: (displayName, authUserId) =>
         set({ onboarded: true, displayName, authUserId }),
       toggleSound: () => set((s) => ({ soundOn: !s.soundOn })),

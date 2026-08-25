@@ -88,11 +88,15 @@ export async function registerPushToken(): Promise<void> {
 }
 
 /**
- * Daily 9pm streak reminder with the user's actual streak number in the copy
- * (REQ-008). Cancelled for today once the goal is met, so users never get
- * nudged on a day they already completed (PRD 12: max 1 notification/day).
+ * Daily streak reminder at the user's preferred hour (PRD 5.5), with the
+ * actual streak number in the copy (REQ-008). Cancelled for today once the
+ * goal is met, so users never get nudged on a day they already completed
+ * (PRD 12: max 1 notification/day).
  */
-export async function scheduleStreakReminder(currentStreak: number): Promise<void> {
+export async function scheduleStreakReminder(
+  currentStreak: number,
+  hour: number = 21
+): Promise<void> {
   if (!Device.isDevice) return;
   await Notifications.cancelScheduledNotificationAsync(STREAK_REMINDER_ID).catch(() => {});
   const body =
@@ -104,10 +108,23 @@ export async function scheduleStreakReminder(currentStreak: number): Promise<voi
     content: { title: 'SkillScroll', body },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: 21,
+      hour,
       minute: 0,
     },
   });
+}
+
+/** Persists the preferred reminder hour server-side so push scheduling matches (signed-in users). */
+export async function syncReminderHour(hour: number): Promise<void> {
+  if (!supabase) return;
+  try {
+    const { data } = await supabase.auth.getUser();
+    const authId = data.user?.id;
+    if (!authId) return;
+    await supabase.from('users').update({ reminder_hour: hour }).eq('auth_id', authId);
+  } catch {
+    // local scheduling still applies
+  }
 }
 
 export async function cancelStreakReminderForToday(): Promise<void> {
