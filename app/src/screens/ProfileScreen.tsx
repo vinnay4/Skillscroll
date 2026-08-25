@@ -3,6 +3,7 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, Vie
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addFriendByCode, fetchMyFriendCode } from '../data/api';
 import { FAQ_ITEMS, SUPPORT_EMAIL } from '../data/faq';
+import { scheduleStreakReminder, syncReminderHour } from '../services/notifications';
 import { capture } from '../lib/analytics';
 import { getLevel } from '../lib/levels';
 import { useFeedStore } from '../stores/feedStore';
@@ -13,6 +14,12 @@ import type { Category } from '../types';
 
 const ALL_TOPICS: Category[] = ['finance', 'technology', 'communication', 'productivity'];
 const GOAL_OPTIONS: DailyGoalMinutes[] = [5, 10, 15];
+const REMINDER_OPTIONS: { hour: number; label: string }[] = [
+  { hour: 19, label: '7 PM' },
+  { hour: 20, label: '8 PM' },
+  { hour: 21, label: '9 PM' },
+  { hour: 22, label: '10 PM' },
+];
 
 const LEVEL_EMOJI: Record<string, string> = {
   Beginner: '🌱',
@@ -32,6 +39,9 @@ export default function ProfileScreen() {
   const setDailyGoal = useUserStore((s) => s.setDailyGoal);
   const language = useUserStore((s) => s.language);
   const setLanguage = useUserStore((s) => s.setLanguage);
+  const reminderHour = useUserStore((s) => s.reminderHour);
+  const setReminderHour = useUserStore((s) => s.setReminderHour);
+  const notificationPromptShown = useUserStore((s) => s.notificationPromptShown);
   const resetUser = useUserStore((s) => s.resetAll);
 
   const totalXp = useProgressStore((s) => s.totalXp);
@@ -182,6 +192,36 @@ export default function ProfileScreen() {
                 ]}
               >
                 {minutes}m
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+      <View style={styles.settingRow}>
+        <Text style={styles.settingLabel}>Reminder time</Text>
+        <View style={styles.goalSegment}>
+          {REMINDER_OPTIONS.map((option) => (
+            <Pressable
+              key={option.hour}
+              style={[styles.goalOption, reminderHour === option.hour && styles.goalOptionActive]}
+              onPress={() => {
+                setReminderHour(option.hour);
+                if (notificationPromptShown) {
+                  void scheduleStreakReminder(
+                    useProgressStore.getState().currentStreak,
+                    option.hour
+                  );
+                }
+                void syncReminderHour(option.hour);
+              }}
+            >
+              <Text
+                style={[
+                  styles.goalOptionText,
+                  reminderHour === option.hour && styles.goalOptionTextActive,
+                ]}
+              >
+                {option.label}
               </Text>
             </Pressable>
           ))}
