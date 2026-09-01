@@ -34,7 +34,7 @@ npm install
 npm start          # Expo dev server → scan QR with Expo Go, or press i / a
 ```
 
-The app runs fully offline in **local demo mode** out of the box: 96 bundled lessons (80 English + 16 Hindi) across Finance, Technology, Communication, and Productivity, plus 8 deep-dive series, with all progress persisted on-device (AsyncStorage). No backend needed.
+The app runs fully offline in **local demo mode** out of the box: 124 bundled lessons (100 English + 24 Hindi) across Finance, Technology, Communication, and Productivity, plus 10 deep-dive series, with all progress persisted on-device (AsyncStorage). No backend needed.
 
 ### Connecting Supabase (optional)
 
@@ -72,7 +72,7 @@ npm run seed:generate             # regenerate SQL seed after editing lesson con
 - **Bookmarking**: save any lesson from the feed action rail; saved list lives in the Progress tab and syncs to Supabase when signed in.
 - **Lesson search**: search by title/concept in the Progress tab's Library section; results open a read-only lesson view.
 - **Share lesson card**: native share sheet with the lesson takeaway (WhatsApp/Instagram etc.).
-- **Topic deep-dives**: 8 ordered series (Money Basics, Protect Your Money, Focus Fundamentals, Work Smarter, Speak with Impact, Be Heard at Work, Tech Literacy 101, Digital Self-Defence) with per-series progress; starting one plays its lessons in order through the feed. Replays never re-award XP.
+- **Topic deep-dives**: 10 ordered series (Money Basics, Protect Your Money, Focus Fundamentals, Work Smarter, Learn How to Learn, Speak with Impact, Be Heard at Work, Career Launchpad, Tech Literacy 101, Digital Self-Defence) with per-series progress; starting one plays its lessons in order through the feed. Replays never re-award XP.
 - **Weekly friends leaderboard**: friend codes (shown in Profile when signed in), mutual friendships via `add_friend_by_code`, and a friends-only weekly XP board in the Progress tab (`get_weekly_leaderboard` RPC). Signed-out users see their own weekly XP locally.
 - **Feed continuity**: the lesson queue and exact position persist across app restarts (PRD 5.1) and double as the offline lesson cache (REQ-017).
 
@@ -86,4 +86,4 @@ Sentry crash reporting (REQ-024) and PostHog analytics (PRD 14.4) are fully wire
 
 ## Deferred (per PRD)
 
-Monetization, offline video caching, report screenshots (needs `react-native-view-shot`), remaining content scale-up (20/50 lessons per category in English).
+Monetization, offline video caching, report screenshots (needs `react-native-view-shot`), remaining content scale-up (25/50 lessons per category in English).

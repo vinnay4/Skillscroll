@@ -24,7 +24,13 @@ insert into public.series (id, title, description, category, language) values
    'communication', 'en'),
   ('series-work-smarter', 'Work Smarter',
    'Prioritize ruthlessly, batch the noise, and protect your energy and sleep.',
-   'productivity', 'en')
+   'productivity', 'en'),
+  ('series-learn-how-to-learn', 'Learn How to Learn',
+   'Recall, spacing, the Feynman test — the science of making things stick.',
+   'productivity', 'en'),
+  ('series-career-launchpad', 'Career Launchpad',
+   'Resume, pitch, interviews, cold outreach, and the follow-up that converts.',
+   'communication', 'en')
 on conflict (id) do update set
   title = excluded.title,
   description = excluded.description,
@@ -79,5 +85,17 @@ insert into public.series_lessons (series_id, lesson_id, position) values
   ('series-work-smarter', 'prod-013', 2),
   ('series-work-smarter', 'prod-014', 3),
   ('series-work-smarter', 'prod-009', 4),
-  ('series-work-smarter', 'prod-015', 5)
+  ('series-work-smarter', 'prod-015', 5),
+  ('series-learn-how-to-learn', 'prod-022', 0),
+  ('series-learn-how-to-learn', 'prod-021', 1),
+  ('series-learn-how-to-learn', 'prod-024', 2),
+  ('series-learn-how-to-learn', 'prod-019', 3),
+  ('series-learn-how-to-learn', 'prod-017', 4),
+  ('series-learn-how-to-learn', 'prod-016', 5),
+  ('series-career-launchpad', 'comm-023', 0),
+  ('series-career-launchpad', 'comm-007', 1),
+  ('series-career-launchpad', 'comm-001', 2),
+  ('series-career-launchpad', 'comm-022', 3),
+  ('series-career-launchpad', 'comm-016', 4),
+  ('series-career-launchpad', 'comm-015', 5)
 on conflict (series_id, lesson_id) do update set position = excluded.position;
