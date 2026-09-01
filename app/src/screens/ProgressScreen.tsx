@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DailyGoalBar from '../components/DailyGoalBar';
 import LessonDetailModal from '../components/LessonDetailModal';
+import WeeklyActivity from '../components/WeeklyActivity';
 import { fetchSeries, fetchWeeklyLeaderboard, LeaderboardRow, searchLessons } from '../data/api';
 import { capture } from '../lib/analytics';
 import { getLevel } from '../lib/levels';
@@ -106,6 +107,8 @@ export default function ProgressScreen() {
           </Text>
         </View>
       </View>
+
+      <WeeklyActivity completedLessons={completedLessons} goalLessons={goalLessons} />
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Today&apos;s goal</Text>

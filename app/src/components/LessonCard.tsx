@@ -6,6 +6,7 @@ import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
+  FadeInDown,
   runOnJS,
   SharedValue,
   useAnimatedStyle,
@@ -13,7 +14,15 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { categoryColors, categoryLabels, colors, radii, spacing } from '../theme';
+import {
+  categoryColors,
+  categoryEmblems,
+  categoryGradients,
+  categoryLabels,
+  colors,
+  radii,
+  spacing,
+} from '../theme';
 import type { Lesson } from '../types';
 
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -188,8 +197,15 @@ export default function LessonCard({
         {isVideo ? (
           <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
         ) : (
-          <View style={[styles.textBackdrop, { backgroundColor: colors.background }]}>
-            <View style={[styles.categoryTint, { backgroundColor: categoryColor }]} />
+          <View style={styles.textBackdrop}>
+            <LinearGradient
+              colors={categoryGradients[lesson.category]}
+              start={{ x: 0.1, y: 0 }}
+              end={{ x: 0.9, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Text style={styles.emblem}>{categoryEmblems[lesson.category]}</Text>
+            <View style={[styles.glow, { backgroundColor: categoryColor }]} />
           </View>
         )}
 
@@ -204,20 +220,26 @@ export default function LessonCard({
           delayLongPress={2000}
         >
           {!isVideo && !quizVisible && (
-            <View style={styles.textContent} pointerEvents="none">
-              <Text style={[styles.segmentLabel, { color: categoryColor }]}>
-                {SEGMENT_LABELS[segment]}
-              </Text>
+            <Animated.View
+              key={segment}
+              entering={FadeInDown.duration(420)}
+              style={styles.textContent}
+              pointerEvents="none"
+            >
+              <View style={styles.segmentChip}>
+                <Text style={styles.segmentLabel}>{SEGMENT_LABELS[segment]}</Text>
+              </View>
               <Text style={segment === 0 ? styles.hookText : styles.bodyText}>
                 {structureParts[segment]}
               </Text>
               {segment === 3 && !!lesson.tryThisToday && (
                 <View style={styles.tryBox}>
-                  <Text style={styles.tryLabel}>Try this today</Text>
+                  <Text style={styles.tryLabel}>✦ Try this today</Text>
                   <Text style={styles.tryText}>{lesson.tryThisToday}</Text>
                 </View>
               )}
-            </View>
+              {segment < 3 && <Text style={styles.tapHint}>tap to continue ›</Text>}
+            </Animated.View>
           )}
         </Pressable>
 
@@ -284,14 +306,23 @@ const styles = StyleSheet.create({
     bottom: 0,
     overflow: 'hidden',
   },
-  categoryTint: {
+  emblem: {
     position: 'absolute',
-    top: -180,
-    right: -140,
-    width: 380,
-    height: 380,
-    borderRadius: 380,
-    opacity: 0.16,
+    top: '16%',
+    right: -40,
+    fontSize: 340,
+    fontWeight: '900',
+    color: 'rgba(255,255,255,0.05)',
+    transform: [{ rotate: '-8deg' }],
+  },
+  glow: {
+    position: 'absolute',
+    bottom: -220,
+    left: -120,
+    width: 420,
+    height: 420,
+    borderRadius: 420,
+    opacity: 0.14,
   },
   quizDim: {
     position: 'absolute',
@@ -308,21 +339,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: 140,
   },
+  segmentChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: radii.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginBottom: spacing.md,
+  },
   segmentLabel: {
-    fontSize: 13,
+    color: colors.white,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 2,
     textTransform: 'uppercase',
-    marginBottom: spacing.md,
   },
-  hookText: { color: colors.white, fontSize: 28, fontWeight: '800', lineHeight: 38 },
-  bodyText: { color: colors.text, fontSize: 22, fontWeight: '600', lineHeight: 33 },
+  hookText: {
+    color: colors.white,
+    fontSize: 30,
+    fontWeight: '800',
+    lineHeight: 41,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowRadius: 12,
+    textShadowOffset: { width: 0, height: 2 },
+  },
+  bodyText: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '600',
+    lineHeight: 34,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowRadius: 8,
+    textShadowOffset: { width: 0, height: 1 },
+  },
+  tapHint: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: spacing.lg,
+  },
   tryBox: {
     marginTop: spacing.lg,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: radii.md,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(251,191,36,0.4)',
     padding: spacing.md,
   },
   tryLabel: {

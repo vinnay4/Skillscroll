@@ -19,6 +19,7 @@ import NotInterestedSheet from '../components/NotInterestedSheet';
 import QuizBottomSheet from '../components/QuizBottomSheet';
 import StreakCounter from '../components/StreakCounter';
 import XPBadge from '../components/XPBadge';
+import XPTotal from '../components/XPTotal';
 import {
   cancelStreakReminderForToday,
   requestPermissionAfterFirstLesson,
@@ -67,6 +68,8 @@ export default function FeedScreen() {
   const toggleBookmark = useBookmarkStore((s) => s.toggleBookmark);
 
   const [quizVisible, setQuizVisible] = useState(false);
+  /** Consecutive correct answers this session — momentum display only */
+  const [combo, setCombo] = useState(0);
   const [notInterestedVisible, setNotInterestedVisible] = useState(false);
   const [reportingLesson, setReportingLesson] = useState<Lesson | null>(null);
   const [celebrating, setCelebrating] = useState(false);
@@ -143,6 +146,7 @@ export default function FeedScreen() {
       const result: CompletionResult = completeLesson(activeLesson, selectedIndex, goalLessons);
       markSeen(activeLesson.id);
       setXpFloat({ amount: result.xpEarned, key: Date.now() });
+      setCombo((c) => (result.quizCorrect ? c + 1 : 0));
 
       if (result.goalMet) {
         setCelebrating(true);
@@ -221,7 +225,7 @@ export default function FeedScreen() {
           <DailyGoalBar completed={dailyCompletedCount} goal={goalLessons} />
         </View>
         <View style={styles.xpWrap}>
-          <Text style={styles.xpTotal}>{totalXp} XP</Text>
+          <XPTotal value={totalXp} />
           {xpFloat && (
             <View style={styles.xpFloat}>
               <XPBadge amount={xpFloat.amount} triggerKey={xpFloat.key} onDone={() => setXpFloat(null)} />
@@ -271,6 +275,8 @@ export default function FeedScreen() {
         <QuizBottomSheet
           lesson={activeLesson}
           visible={quizVisible}
+          combo={combo}
+          nextLessonTitle={lessons[currentIndex + 1]?.title}
           onAnswered={handleQuizAnswered}
           onNext={handleNextLesson}
         />
@@ -316,15 +322,5 @@ const styles = StyleSheet.create({
   },
   goalWrap: { flex: 1 },
   xpWrap: { alignItems: 'flex-end' },
-  xpTotal: {
-    color: colors.white,
-    fontWeight: '800',
-    fontSize: 13,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
   xpFloat: { position: 'absolute', top: 0, right: 0 },
 });
