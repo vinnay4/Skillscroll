@@ -4,15 +4,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { capture } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { DailyGoalMinutes, useUserStore } from '../stores/userStore';
-import { categoryColors, categoryLabels, colors, radii, spacing } from '../theme';
+import { categoryColors, categoryEmoji, categoryLabels, colors, radii, spacing } from '../theme';
 import type { Category, Language } from '../types';
 
 const ALL_TOPICS: Category[] = ['finance', 'technology', 'communication', 'productivity'];
 
-const GOAL_OPTIONS: { minutes: DailyGoalMinutes; label: string; scrolls: string }[] = [
-  { minutes: 5, label: 'Casual', scrolls: '~5 lessons a day' },
-  { minutes: 10, label: 'Regular', scrolls: '~10 lessons a day' },
-  { minutes: 15, label: 'Serious', scrolls: '~15 lessons a day' },
+const GOAL_OPTIONS: { minutes: DailyGoalMinutes; label: string; emoji: string; scrolls: string }[] = [
+  { minutes: 5, label: 'Casual', emoji: '🌱', scrolls: '~5 lessons a day' },
+  { minutes: 10, label: 'Regular', emoji: '🔥', scrolls: '~10 lessons a day' },
+  { minutes: 15, label: 'Serious', emoji: '⚡', scrolls: '~15 lessons a day' },
 ];
 
 /**
@@ -69,6 +69,8 @@ export default function OnboardingFlow() {
 
       {step === 0 && (
         <View style={styles.body}>
+          <Text style={styles.brand}>SkillScroll</Text>
+          <Text style={styles.tagline}>Learn in 60 seconds. While you scroll.</Text>
           <Text style={styles.heading}>What do you want to learn?</Text>
           <Text style={styles.subheading}>Pick 1–4 topics. You can change these anytime.</Text>
           <View style={styles.pillGrid}>
@@ -77,14 +79,18 @@ export default function OnboardingFlow() {
               return (
                 <Pressable
                   key={topic}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Topic: ${categoryLabels[topic]}`}
+                  accessibilityState={{ selected }}
                   onPress={() => toggleTopic(topic)}
-                  style={[
+                  style={({ pressed }) => [
                     styles.topicPill,
                     selected && { backgroundColor: categoryColors[topic], borderColor: categoryColors[topic] },
+                    pressed && styles.pressed,
                   ]}
                 >
                   <Text style={[styles.topicText, selected && styles.topicTextSelected]}>
-                    {categoryLabels[topic]}
+                    {categoryEmoji[topic]} {categoryLabels[topic]}
                   </Text>
                 </Pressable>
               );
@@ -123,11 +129,24 @@ export default function OnboardingFlow() {
               return (
                 <Pressable
                   key={option.minutes}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Daily goal: ${option.label}, ${option.scrolls}`}
+                  accessibilityState={{ selected }}
                   onPress={() => setGoal(option.minutes)}
-                  style={[styles.goalCard, selected && styles.goalCardActive]}
+                  style={({ pressed }) => [
+                    styles.goalCard,
+                    selected && styles.goalCardActive,
+                    pressed && styles.pressed,
+                  ]}
                 >
-                  <Text style={styles.goalLabel}>{option.label}</Text>
-                  <Text style={styles.goalScrolls}>{option.scrolls}</Text>
+                  <View style={styles.goalHeader}>
+                    <Text style={styles.goalEmoji}>{option.emoji}</Text>
+                    <View style={styles.goalHeaderText}>
+                      <Text style={styles.goalLabel}>{option.label}</Text>
+                      <Text style={styles.goalScrolls}>{option.scrolls}</Text>
+                    </View>
+                    {selected && <Text style={styles.goalCheck}>✓</Text>}
+                  </View>
                   <Text style={styles.goalMinutes}>{option.minutes} min</Text>
                 </Pressable>
               );
@@ -172,6 +191,15 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
   dotActive: { backgroundColor: colors.primary, width: 20 },
   body: { flex: 1 },
+  brand: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  tagline: { color: colors.textMuted, fontSize: 13, marginBottom: spacing.xl },
+  pressed: { transform: [{ scale: 0.97 }] },
   heading: { color: colors.text, fontSize: 28, fontWeight: '800', lineHeight: 36 },
   subheading: { color: colors.textSecondary, fontSize: 15, marginTop: spacing.sm, lineHeight: 22 },
   pillGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xl },
@@ -214,7 +242,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.md,
   },
-  goalCardActive: { borderColor: colors.primary, backgroundColor: colors.surfaceElevated },
+  goalCardActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.surfaceElevated,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+  },
+  goalHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  goalEmoji: { fontSize: 28 },
+  goalHeaderText: { flex: 1 },
+  goalCheck: { color: colors.primary, fontSize: 20, fontWeight: '800' },
   goalLabel: { color: colors.text, fontSize: 17, fontWeight: '700' },
   goalScrolls: { color: colors.textSecondary, fontSize: 13, marginTop: 2 },
   goalMinutes: { color: colors.primary, fontSize: 13, fontWeight: '700', marginTop: 6 },

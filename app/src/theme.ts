@@ -26,6 +26,29 @@ export const categoryColors: Record<Category, string> = {
   productivity: '#F59E0B',
 };
 
+/** Rich two-tone card gradients — each category gets a visual personality */
+export const categoryGradients: Record<Category, [string, string]> = {
+  finance: ['#3730A3', '#0D0B2E'],
+  technology: ['#1D4ED8', '#0A1230'],
+  communication: ['#047857', '#04211A'],
+  productivity: ['#B45309', '#2A1204'],
+};
+
+/** Oversized watermark glyph rendered behind lesson text */
+export const categoryEmblems: Record<Category, string> = {
+  finance: '₹',
+  technology: '⌘',
+  communication: '“',
+  productivity: '⚡',
+};
+
+export const categoryEmoji: Record<Category, string> = {
+  finance: '💰',
+  technology: '💻',
+  communication: '🗣️',
+  productivity: '⚡',
+};
+
 export const categoryLabels: Record<Category, string> = {
   finance: 'Finance',
   technology: 'Technology',

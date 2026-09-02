@@ -19,6 +19,10 @@ type AnswerPhase = 'idle' | 'selected' | 'revealed';
 interface Props {
   lesson: Lesson;
   visible: boolean;
+  /** Consecutive correct answers this session — momentum display (no XP effect) */
+  combo?: number;
+  /** Curiosity teaser shown after answering (variable-reward anticipation) */
+  nextLessonTitle?: string;
   onAnswered: (selectedIndex: number) => void;
   onNext: () => void;
 }
@@ -30,8 +34,16 @@ interface Props {
  * - correct answer always shown (REQ-006); no skip (REQ-005)
  * - "Next Lesson" CTA appears 1s after the answer
  */
-export default function QuizBottomSheet({ lesson, visible, onAnswered, onNext }: Props) {
+export default function QuizBottomSheet({
+  lesson,
+  visible,
+  combo = 0,
+  nextLessonTitle,
+  onAnswered,
+  onNext,
+}: Props) {
   const translateY = useSharedValue(SHEET_HEIGHT);
+  const correctPop = useSharedValue(1);
   const [phase, setPhase] = useState<AnswerPhase>('idle');
   const [selected, setSelected] = useState<number | null>(null);
   const [showNext, setShowNext] = useState(false);
@@ -52,6 +64,10 @@ export default function QuizBottomSheet({ lesson, visible, onAnswered, onNext }:
     transform: [{ translateY: translateY.value }],
   }));
 
+  const correctPopStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: correctPop.value }],
+  }));
+
   const handleAnswer = useCallback(
     (index: number) => {
       if (phase !== 'idle') return;
@@ -64,6 +80,11 @@ export default function QuizBottomSheet({ lesson, visible, onAnswered, onNext }:
         if (index === lesson.quizCorrectIndex) {
           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
+        // The correct option "pops" on reveal — a small dopamine punctuation
+        correctPop.value = withSpring(1.06, { stiffness: 400, damping: 12 });
+        setTimeout(() => {
+          correctPop.value = withSpring(1, { stiffness: 300, damping: 18 });
+        }, 160);
         onAnswered(index);
       }, 150);
 
@@ -92,29 +113,56 @@ export default function QuizBottomSheet({ lesson, visible, onAnswered, onNext }:
       </Text>
       <View style={styles.options}>
         {lesson.quizOptions.map((option, index) => (
-          <Pressable
+          <Animated.View
             key={index}
-            style={optionStyle(index)}
-            onPress={() => handleAnswer(index)}
-            disabled={phase !== 'idle'}
+            style={phase === 'revealed' && index === lesson.quizCorrectIndex ? correctPopStyle : undefined}
           >
-            <Text style={styles.optionText} numberOfLines={2}>
-              {option}
-            </Text>
-          </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Answer option: ${option}`}
+              accessibilityState={{ disabled: phase !== 'idle', selected: selected === index }}
+              style={({ pressed }) => [
+                ...(Array.isArray(optionStyle(index)) ? (optionStyle(index) as object[]) : [optionStyle(index)]),
+                pressed && phase === 'idle' && styles.optionPressed,
+              ]}
+              onPress={() => handleAnswer(index)}
+              disabled={phase !== 'idle'}
+            >
+              <Text style={styles.optionText} numberOfLines={2}>
+                {option}
+              </Text>
+            </Pressable>
+          </Animated.View>
         ))}
       </View>
       {phase === 'revealed' && (
-        <Text style={styles.feedback}>
-          {selected === lesson.quizCorrectIndex
-            ? 'Correct! +5 XP'
-            : 'Not quite — the correct answer is highlighted.'}
-        </Text>
+        <View style={styles.feedbackWrap}>
+          <Text style={styles.feedback}>
+            {selected === lesson.quizCorrectIndex
+              ? 'Correct! +5 XP'
+              : 'Not quite — the correct answer is highlighted.'}
+          </Text>
+          {selected === lesson.quizCorrectIndex && combo >= 2 && (
+            <Text style={styles.combo}>🔥 {combo} in a row!</Text>
+          )}
+        </View>
       )}
       {showNext && (
-        <Pressable style={styles.nextButton} onPress={onNext}>
-          <Text style={styles.nextText}>Next Lesson</Text>
-        </Pressable>
+        <View style={styles.footer}>
+          {!!nextLessonTitle && (
+            <Text style={styles.upNext} numberOfLines={1}>
+              Up next: <Text style={styles.upNextTitle}>{nextLessonTitle}</Text>
+            </Text>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Next lesson"
+            style={({ pressed }) => [styles.nextButton, pressed && styles.nextButtonPressed]}
+            onPress={onNext}
+          >
+            <Text style={styles.nextText}>Next Lesson</Text>
+          </Pressable>
+        </View>
       )}
     </Animated.View>
   );
@@ -170,23 +218,40 @@ const styles = StyleSheet.create({
   optionCorrect: { borderColor: colors.success, backgroundColor: 'rgba(34,197,94,0.22)' },
   optionWrong: { borderColor: colors.error, backgroundColor: 'rgba(239,68,68,0.22)' },
   optionDimmed: { opacity: 0.45 },
+  optionPressed: { transform: [{ scale: 0.98 }], opacity: 0.9 },
   optionText: { color: colors.text, fontSize: 14, fontWeight: '500' },
+  feedbackWrap: { marginTop: spacing.md, alignItems: 'center', gap: 4 },
   feedback: {
     color: colors.textSecondary,
     fontSize: 13,
-    marginTop: spacing.md,
     textAlign: 'center',
   },
-  nextButton: {
+  combo: { color: colors.gold, fontSize: 14, fontWeight: '800' },
+  footer: {
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
     bottom: spacing.xl,
+    gap: spacing.sm,
+  },
+  upNext: {
+    color: colors.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  upNextTitle: { color: colors.textSecondary, fontWeight: '700' },
+  nextButton: {
     height: 52,
     borderRadius: radii.pill,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
+  nextButtonPressed: { transform: [{ scale: 0.98 }] },
   nextText: { color: colors.white, fontSize: 16, fontWeight: '700' },
 });

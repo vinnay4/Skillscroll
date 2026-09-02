@@ -3,6 +3,7 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, Vie
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addFriendByCode, fetchMyFriendCode } from '../data/api';
 import { FAQ_ITEMS, SUPPORT_EMAIL } from '../data/faq';
+import { scheduleStreakReminder, syncReminderHour } from '../services/notifications';
 import { capture } from '../lib/analytics';
 import { getLevel } from '../lib/levels';
 import { useFeedStore } from '../stores/feedStore';
@@ -13,6 +14,12 @@ import type { Category } from '../types';
 
 const ALL_TOPICS: Category[] = ['finance', 'technology', 'communication', 'productivity'];
 const GOAL_OPTIONS: DailyGoalMinutes[] = [5, 10, 15];
+const REMINDER_OPTIONS: { hour: number; label: string }[] = [
+  { hour: 19, label: '7 PM' },
+  { hour: 20, label: '8 PM' },
+  { hour: 21, label: '9 PM' },
+  { hour: 22, label: '10 PM' },
+];
 
 const LEVEL_EMOJI: Record<string, string> = {
   Beginner: '🌱',
@@ -32,6 +39,9 @@ export default function ProfileScreen() {
   const setDailyGoal = useUserStore((s) => s.setDailyGoal);
   const language = useUserStore((s) => s.language);
   const setLanguage = useUserStore((s) => s.setLanguage);
+  const reminderHour = useUserStore((s) => s.reminderHour);
+  const setReminderHour = useUserStore((s) => s.setReminderHour);
+  const notificationPromptShown = useUserStore((s) => s.notificationPromptShown);
   const resetUser = useUserStore((s) => s.resetAll);
 
   const totalXp = useProgressStore((s) => s.totalXp);
@@ -117,6 +127,9 @@ export default function ProfileScreen() {
           return (
             <Pressable
               key={topic}
+              accessibilityRole="button"
+              accessibilityLabel={`Topic: ${categoryLabels[topic]}`}
+              accessibilityState={{ selected }}
               style={[
                 styles.topicPill,
                 selected
@@ -172,6 +185,9 @@ export default function ProfileScreen() {
           {GOAL_OPTIONS.map((minutes) => (
             <Pressable
               key={minutes}
+              accessibilityRole="button"
+              accessibilityLabel={`Daily goal: ${minutes} minutes`}
+              accessibilityState={{ selected: dailyGoalMinutes === minutes }}
               style={[styles.goalOption, dailyGoalMinutes === minutes && styles.goalOptionActive]}
               onPress={() => setDailyGoal(minutes)}
             >
@@ -187,7 +203,42 @@ export default function ProfileScreen() {
           ))}
         </View>
       </View>
+      <View style={styles.settingRow}>
+        <Text style={styles.settingLabel}>Reminder time</Text>
+        <View style={styles.goalSegment}>
+          {REMINDER_OPTIONS.map((option) => (
+            <Pressable
+              key={option.hour}
+              accessibilityRole="button"
+              accessibilityLabel={`Reminder time: ${option.label}`}
+              accessibilityState={{ selected: reminderHour === option.hour }}
+              style={[styles.goalOption, reminderHour === option.hour && styles.goalOptionActive]}
+              onPress={() => {
+                setReminderHour(option.hour);
+                if (notificationPromptShown) {
+                  void scheduleStreakReminder(
+                    useProgressStore.getState().currentStreak,
+                    option.hour
+                  );
+                }
+                void syncReminderHour(option.hour);
+              }}
+            >
+              <Text
+                style={[
+                  styles.goalOptionText,
+                  reminderHour === option.hour && styles.goalOptionTextActive,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Language: ${language === 'en' ? 'English' : 'Hindi'}. Tap to switch.`}
         style={styles.settingRow}
         onPress={() => setLanguage(language === 'en' ? 'hi' : 'en')}
       >
@@ -199,6 +250,9 @@ export default function ProfileScreen() {
       {FAQ_ITEMS.map((item, index) => (
         <Pressable
           key={index}
+          accessibilityRole="button"
+          accessibilityLabel={item.question}
+          accessibilityState={{ expanded: openFaq === index }}
           style={styles.faqCard}
           onPress={() => setOpenFaq(openFaq === index ? null : index)}
         >
@@ -216,7 +270,12 @@ export default function ProfileScreen() {
         <Text style={styles.contactText}>Still stuck? Email {SUPPORT_EMAIL} — 24h response</Text>
       </Pressable>
 
-      <Pressable style={styles.resetButton} onPress={handleReset}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Reset all progress"
+        style={styles.resetButton}
+        onPress={handleReset}
+      >
         <Text style={styles.resetText}>Reset all progress</Text>
       </Pressable>
     </ScrollView>

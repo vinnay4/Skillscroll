@@ -69,4 +69,20 @@ export const SEED_SERIES: Series[] = [
     language: 'en',
     lessonIds: ['prod-008', 'prod-007', 'prod-013', 'prod-014', 'prod-009', 'prod-015'],
   },
+  {
+    id: 'series-learn-how-to-learn',
+    title: 'Learn How to Learn',
+    description: 'Recall, spacing, the Feynman test — the science of making things stick.',
+    category: 'productivity',
+    language: 'en',
+    lessonIds: ['prod-022', 'prod-021', 'prod-024', 'prod-019', 'prod-017', 'prod-016'],
+  },
+  {
+    id: 'series-career-launchpad',
+    title: 'Career Launchpad',
+    description: 'Resume, pitch, interviews, cold outreach, and the follow-up that converts.',
+    category: 'communication',
+    language: 'en',
+    lessonIds: ['comm-023', 'comm-007', 'comm-001', 'comm-022', 'comm-016', 'comm-015'],
+  },
 ];

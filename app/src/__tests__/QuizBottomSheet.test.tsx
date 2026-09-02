@@ -103,6 +103,27 @@ describe('quiz answer state machine (PRD 8.3, REQ-004/005/006)', () => {
     expect(onNext).toHaveBeenCalled();
   });
 
+  it('shows combo momentum and the next-lesson teaser (dopamine design, PRD 8.4)', async () => {
+    await render(
+      <QuizBottomSheet
+        lesson={lesson}
+        visible
+        combo={3}
+        nextLessonTitle="The 1.4% fee eating your mutual fund"
+        onAnswered={jest.fn()}
+        onNext={jest.fn()}
+      />
+    );
+
+    await fireEvent.press(screen.getByText('Four'));
+    await advance(150);
+    expect(screen.getByText('🔥 3 in a row!')).toBeTruthy();
+
+    await advance(1000);
+    expect(screen.getByText(/Up next:/)).toBeTruthy();
+    expect(screen.getByText('The 1.4% fee eating your mutual fund')).toBeTruthy();
+  });
+
   it('resets to a fresh state for the next lesson', async () => {
     await render(
       <QuizBottomSheet lesson={lesson} visible onAnswered={jest.fn()} onNext={jest.fn()} />
