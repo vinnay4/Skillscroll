@@ -214,6 +214,12 @@ export default function LessonCard({
 
         {/* Long-press opens the issue-report sheet (REQ-022) */}
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            isVideo
+              ? `Lesson video: ${lesson.title}. Tap to toggle sound, long-press to report an issue.`
+              : `Lesson: ${lesson.title}. Tap to continue, long-press to report an issue.`
+          }
           style={StyleSheet.absoluteFill}
           onPress={handleTap}
           onLongPress={onReport}
@@ -278,14 +284,33 @@ export default function LessonCard({
             {lesson.title}
           </Text>
           <View style={styles.actionRail}>
-            <Pressable style={styles.actionButton} onPress={onToggleBookmark} hitSlop={8}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={bookmarked ? 'Remove bookmark' : 'Save lesson for later'}
+              accessibilityState={{ selected: bookmarked }}
+              style={styles.actionButton}
+              onPress={onToggleBookmark}
+              hitSlop={8}
+            >
               <Text style={styles.actionIcon}>{bookmarked ? '🔖' : '📑'}</Text>
             </Pressable>
-            <Pressable style={styles.actionButton} onPress={onShare} hitSlop={8}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Share lesson"
+              style={styles.actionButton}
+              onPress={onShare}
+              hitSlop={8}
+            >
               <Text style={styles.actionIcon}>↗</Text>
             </Pressable>
             {isVideo && (
-              <Pressable style={styles.actionButton} onPress={onToggleSound} hitSlop={8}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={soundOn ? 'Mute sound' : 'Unmute sound'}
+                style={styles.actionButton}
+                onPress={onToggleSound}
+                hitSlop={8}
+              >
                 <Text style={styles.actionIcon}>{soundOn ? '🔊' : '🔇'}</Text>
               </Pressable>
             )}

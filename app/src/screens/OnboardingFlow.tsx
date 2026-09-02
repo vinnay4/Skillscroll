@@ -79,6 +79,9 @@ export default function OnboardingFlow() {
               return (
                 <Pressable
                   key={topic}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Topic: ${categoryLabels[topic]}`}
+                  accessibilityState={{ selected }}
                   onPress={() => toggleTopic(topic)}
                   style={({ pressed }) => [
                     styles.topicPill,
@@ -126,6 +129,9 @@ export default function OnboardingFlow() {
               return (
                 <Pressable
                   key={option.minutes}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Daily goal: ${option.label}, ${option.scrolls}`}
+                  accessibilityState={{ selected }}
                   onPress={() => setGoal(option.minutes)}
                   style={({ pressed }) => [
                     styles.goalCard,

@@ -34,7 +34,7 @@ npm install
 npm start          # Expo dev server → scan QR with Expo Go, or press i / a
 ```
 
-The app runs fully offline in **local demo mode** out of the box: 124 bundled lessons (100 English + 24 Hindi) across Finance, Technology, Communication, and Productivity, plus 10 deep-dive series, with all progress persisted on-device (AsyncStorage). No backend needed.
+The app runs fully offline in **local demo mode** out of the box: 144 bundled lessons (120 English + 24 Hindi) across Finance, Technology, Communication, and Productivity, plus 10 deep-dive series, with all progress persisted on-device (AsyncStorage). No backend needed.
 
 ### Connecting Supabase (optional)
 
@@ -47,11 +47,14 @@ The app runs fully offline in **local demo mode** out of the box: 124 bundled le
 
 ```bash
 npm test                          # pure-logic tests (XP, levels, streak rollover)
-npm --prefix app test             # jest: store accounting, feed ranking, quiz state machine
+npm --prefix app test             # jest: store accounting, feed ranking, quiz state machine,
+                                  #       and the end-to-end lesson→quiz→XP loop
 npm run typecheck                 # strict TypeScript over the app
 node --experimental-strip-types scripts/validate-content.mjs   # editorial rules + coverage report
 npm run seed:generate             # regenerate SQL seed after editing lesson content
 ```
+
+All primary interactive elements carry accessibility roles, labels, and selected/expanded states (quiz options, lesson cards, action rail, onboarding pills, settings controls, FAQ).
 
 ## What's implemented (MVP scope, PRD §6.1)
 
@@ -86,4 +89,4 @@ Sentry crash reporting (REQ-024) and PostHog analytics (PRD 14.4) are fully wire
 
 ## Deferred (per PRD)
 
-Monetization, offline video caching, report screenshots (needs `react-native-view-shot`), remaining content scale-up (25/50 lessons per category in English).
+Monetization, offline video caching, report screenshots (needs `react-native-view-shot`), remaining content scale-up (30/50 lessons per category in English).

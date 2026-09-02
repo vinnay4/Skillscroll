@@ -118,6 +118,9 @@ export default function QuizBottomSheet({
             style={phase === 'revealed' && index === lesson.quizCorrectIndex ? correctPopStyle : undefined}
           >
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Answer option: ${option}`}
+              accessibilityState={{ disabled: phase !== 'idle', selected: selected === index }}
               style={({ pressed }) => [
                 ...(Array.isArray(optionStyle(index)) ? (optionStyle(index) as object[]) : [optionStyle(index)]),
                 pressed && phase === 'idle' && styles.optionPressed,
@@ -152,6 +155,8 @@ export default function QuizBottomSheet({
             </Text>
           )}
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Next lesson"
             style={({ pressed }) => [styles.nextButton, pressed && styles.nextButtonPressed]}
             onPress={onNext}
           >

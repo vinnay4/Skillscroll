@@ -127,6 +127,9 @@ export default function ProfileScreen() {
           return (
             <Pressable
               key={topic}
+              accessibilityRole="button"
+              accessibilityLabel={`Topic: ${categoryLabels[topic]}`}
+              accessibilityState={{ selected }}
               style={[
                 styles.topicPill,
                 selected
@@ -182,6 +185,9 @@ export default function ProfileScreen() {
           {GOAL_OPTIONS.map((minutes) => (
             <Pressable
               key={minutes}
+              accessibilityRole="button"
+              accessibilityLabel={`Daily goal: ${minutes} minutes`}
+              accessibilityState={{ selected: dailyGoalMinutes === minutes }}
               style={[styles.goalOption, dailyGoalMinutes === minutes && styles.goalOptionActive]}
               onPress={() => setDailyGoal(minutes)}
             >
@@ -203,6 +209,9 @@ export default function ProfileScreen() {
           {REMINDER_OPTIONS.map((option) => (
             <Pressable
               key={option.hour}
+              accessibilityRole="button"
+              accessibilityLabel={`Reminder time: ${option.label}`}
+              accessibilityState={{ selected: reminderHour === option.hour }}
               style={[styles.goalOption, reminderHour === option.hour && styles.goalOptionActive]}
               onPress={() => {
                 setReminderHour(option.hour);
@@ -228,6 +237,8 @@ export default function ProfileScreen() {
         </View>
       </View>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Language: ${language === 'en' ? 'English' : 'Hindi'}. Tap to switch.`}
         style={styles.settingRow}
         onPress={() => setLanguage(language === 'en' ? 'hi' : 'en')}
       >
@@ -239,6 +250,9 @@ export default function ProfileScreen() {
       {FAQ_ITEMS.map((item, index) => (
         <Pressable
           key={index}
+          accessibilityRole="button"
+          accessibilityLabel={item.question}
+          accessibilityState={{ expanded: openFaq === index }}
           style={styles.faqCard}
           onPress={() => setOpenFaq(openFaq === index ? null : index)}
         >
@@ -256,7 +270,12 @@ export default function ProfileScreen() {
         <Text style={styles.contactText}>Still stuck? Email {SUPPORT_EMAIL} — 24h response</Text>
       </Pressable>
 
-      <Pressable style={styles.resetButton} onPress={handleReset}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Reset all progress"
+        style={styles.resetButton}
+        onPress={handleReset}
+      >
         <Text style={styles.resetText}>Reset all progress</Text>
       </Pressable>
     </ScrollView>
